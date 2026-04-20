@@ -1,0 +1,7 @@
+.DS_Store
+.superpowers/
+.worktrees/
+.venv/
+node_modules/
+tmp/
+PDFs/

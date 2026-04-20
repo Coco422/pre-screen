@@ -1,5 +1,8 @@
+import os
 from pathlib import Path
 import sys
+
+import httpx
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -11,16 +14,23 @@ from pre_screen_common.judge0_client import Judge0Client  # noqa: E402
 
 
 def main() -> None:
-    client = Judge0Client(base_url="http://localhost:2358")
-    result = client.run_sync(
-        {
-            "language_id": 71,
-            "source_code": "print('hello from judge0')",
-        }
-    )
+    client = Judge0Client(base_url=os.environ.get("JUDGE0_BASE_URL", "http://localhost:2358"))
+    try:
+        result = client.run_sync(
+            {
+                "language_id": 71,
+                "source_code": "print('hello from judge0')",
+            }
+        )
+    except httpx.HTTPStatusError as exc:
+        body = exc.response.text.strip() or "empty response body"
+        raise RuntimeError(f"Judge0 returned {exc.response.status_code} for {exc.request.url}: {body}") from exc
+
     stdout = result.get("stdout")
     if stdout is None:
-        raise RuntimeError(f"Judge0 did not return stdout: {result}")
+        status = result.get("status") or {}
+        detail = result.get("message") or status.get("description") or "no stdout returned"
+        raise RuntimeError(f"Judge0 execution failed ({detail}): {result}")
     print(stdout.strip())
 
 

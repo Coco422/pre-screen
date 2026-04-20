@@ -12,6 +12,17 @@ tasks.
 3. Start the local stack with `bash scripts/dev-up.sh`.
 4. Run tests with `uv run pytest`.
 
+## Judge0 note
+
+The local Judge0 stack follows the official split deployment pattern: one API container, one
+worker container, a dedicated Postgres database, and a dedicated Redis instance with password
+protection.
+
+If you are running on macOS with Docker Desktop, Judge0 may still fail to execute code even when
+the API is healthy. Judge0 uses `isolate`, which expects Linux cgroup features that are not always
+available through Docker Desktop's VM layer. If you see errors mentioning `/sys/fs/cgroup/...` or
+`/box/...`, move the Judge0 runtime to a Linux host or VM and keep the rest of the stack local.
+
 ## Layout
 
 - `packages/backend-common`: shared backend settings used by the bootstrap test.

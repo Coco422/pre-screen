@@ -46,15 +46,21 @@ services:
 
   judge0-db:
     image: postgres:16
-    environment:
-      POSTGRES_DB: judge0
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    env_file:
+      - ./infra/judge0/judge0.conf
     ports:
       - "5433:5432"
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
 
   judge0-redis:
     image: redis:7
+    env_file:
+      - ./infra/judge0/judge0.conf
+    command:
+      - bash
+      - -c
+      - docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"
     ports:
       - "6380:6379"
 
@@ -64,17 +70,29 @@ services:
     depends_on:
       - judge0-db
       - judge0-redis
-    environment:
-      POSTGRES_HOST: judge0-db
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: judge0
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      REDIS_HOST: judge0-redis
-      REDIS_PORT: 6379
+    env_file:
+      - ./infra/judge0/judge0.conf
+    volumes:
+      - ./infra/judge0/judge0.conf:/judge0.conf:ro
+    privileged: true
     ports:
       - "2358:2358"
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    platform: linux/amd64
+    command:
+      - ./scripts/workers
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    env_file:
+      - ./infra/judge0/judge0.conf
+    volumes:
+      - ./infra/judge0/judge0.conf:/judge0.conf:ro
+    privileged: true
 
 volumes:
   postgres_data:
   minio_data:
+  judge0_db_data:

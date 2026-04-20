@@ -9,5 +9,5 @@ compose() {
   fi
 }
 
-compose up -d postgres redis minio minio-init judge0-db judge0-redis judge0
+compose up -d postgres redis minio minio-init judge0-db judge0-redis judge0 judge0-workers
 compose ps

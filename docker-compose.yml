@@ -59,7 +59,8 @@ services:
       - "6380:6379"
 
   judge0:
-    image: judge0/judge0:latest
+    image: judge0/judge0:1.13.1
+    platform: linux/amd64
     depends_on:
       - judge0-db
       - judge0-redis

@@ -2,11 +2,10 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY pyproject.toml ./
-RUN pip install uv && uv pip install --system .
+RUN pip install --no-cache-dir "pydantic>=2.10.0" "pydantic-settings>=2.8.0"
 
-COPY packages ./packages
-COPY services ./services
-COPY scripts ./scripts
+COPY packages/backend-common/src ./packages/backend-common/src
 
-CMD ["python", "-m", "uvicorn", "services.gateway.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PYTHONPATH=/app/packages/backend-common/src
+
+CMD ["python", "-c", "from pre_screen_common.settings import AppSettings; print('backend image ready')"]

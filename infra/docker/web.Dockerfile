@@ -1,9 +1,7 @@
-FROM node:22-alpine
+FROM nginx:1.27-alpine
 
 WORKDIR /app
 
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-COPY apps ./apps
 COPY infra/nginx ./infra/nginx
 
-CMD ["sh", "-c", "printf 'web image placeholder\\n'"]
+COPY infra/nginx/nginx.conf /etc/nginx/nginx.conf

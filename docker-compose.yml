@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: prescreen
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-02-21T16-00-46Z
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'waiting for minio'; sleep 2; done;
+      /usr/bin/mc mb --ignore-existing local/resumes;
+      exit 0;
+      "
+
+  judge0-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: judge0
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  judge0-redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+
+  judge0:
+    image: judge0/judge0:latest
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@judge0-db:5432/judge0
+      REDIS_URL: redis://judge0-redis:6379/0
+    ports:
+      - "2358:2358"
+
+volumes:
+  postgres_data:
+  minio_data:

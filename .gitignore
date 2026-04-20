@@ -1,7 +1,11 @@
 .DS_Store
-.superpowers/
-.worktrees/
+.env
 .venv/
 node_modules/
+dist/
+coverage/
+playwright-report/
 tmp/
-PDFs/
+.pytest_cache/
+.ruff_cache/
+.superpowers/

@@ -65,8 +65,13 @@ services:
       - judge0-db
       - judge0-redis
     environment:
-      DATABASE_URL: postgres://postgres:postgres@judge0-db:5432/judge0
-      REDIS_URL: redis://judge0-redis:6379/0
+      POSTGRES_HOST: judge0-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: judge0
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      REDIS_HOST: judge0-redis
+      REDIS_PORT: 6379
     ports:
       - "2358:2358"
 

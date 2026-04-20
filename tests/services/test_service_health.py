@@ -9,24 +9,36 @@ from services.risk.app.main import app as risk_app
 
 
 def test_gateway_health():
-    assert TestClient(gateway_app).get("/healthz").json()["service"] == "gateway"
+    response = TestClient(gateway_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "gateway", "status": "ok"}
 
 
 def test_resume_health():
-    assert TestClient(resume_app).get("/healthz").json()["service"] == "resume"
+    response = TestClient(resume_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "resume", "status": "ok"}
 
 
 def test_exam_health():
-    assert TestClient(exam_app).get("/healthz").json()["service"] == "exam"
+    response = TestClient(exam_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "exam", "status": "ok"}
 
 
 def test_judge_bridge_health():
-    assert TestClient(judge_app).get("/healthz").json()["service"] == "judge-bridge"
+    response = TestClient(judge_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "judge-bridge", "status": "ok"}
 
 
 def test_scoring_health():
-    assert TestClient(scoring_app).get("/healthz").json()["service"] == "scoring"
+    response = TestClient(scoring_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "scoring", "status": "ok"}
 
 
 def test_risk_health():
-    assert TestClient(risk_app).get("/healthz").json()["service"] == "risk"
+    response = TestClient(risk_app).get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"service": "risk", "status": "ok"}

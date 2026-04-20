@@ -1,6 +1,8 @@
 .DS_Store
 .env
 .venv/
+.worktrees/
+PDFs/
 node_modules/
 dist/
 coverage/
@@ -8,4 +10,7 @@ playwright-report/
 tmp/
 .pytest_cache/
 .ruff_cache/
+__pycache__/
+*.py[cod]
+uv.lock
 .superpowers/

@@ -1,7 +1,5 @@
 FROM nginx:1.27-alpine
 
-WORKDIR /app
-
-COPY infra/nginx ./infra/nginx
+WORKDIR /usr/share/nginx/html
 
 COPY infra/nginx/nginx.conf /etc/nginx/nginx.conf

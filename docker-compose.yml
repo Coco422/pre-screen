@@ -31,12 +31,18 @@ services:
     image: minio/mc:RELEASE.2025-02-21T16-00-46Z
     depends_on:
       - minio
-    entrypoint: >
-      /bin/sh -c "
-      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'waiting for minio'; sleep 2; done;
-      /usr/bin/mc mb --ignore-existing local/resumes;
-      exec tail -f /dev/null;
-      "
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        until /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin; do
+          echo "waiting for minio"
+          sleep 2
+        done
+
+        /usr/bin/mc mb --ignore-existing local/resumes
+        echo "minio bootstrap complete"
+        exec tail -f /dev/null
 
   judge0-db:
     image: postgres:16

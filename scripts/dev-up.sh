@@ -9,5 +9,5 @@ compose() {
   fi
 }
 
-compose up -d postgres redis minio minio-init judge0-db judge0-redis judge0 judge0-workers
+compose up -d --build postgres redis minio minio-init gateway web nginx
 compose ps

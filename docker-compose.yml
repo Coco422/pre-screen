@@ -9,11 +9,21 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prescreen"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -qx PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   minio:
     image: minio/minio:RELEASE.2025-02-28T09-55-16Z
@@ -42,9 +52,9 @@ services:
 
         /usr/bin/mc mb --ignore-existing local/resumes
         echo "minio bootstrap complete"
-        exec tail -f /dev/null
 
   judge0-db:
+    profiles: ["judge0-local"]
     image: postgres:16
     env_file:
       - ./infra/judge0/judge0.conf
@@ -52,8 +62,14 @@ services:
       - "5433:5432"
     volumes:
       - judge0_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   judge0-redis:
+    profiles: ["judge0-local"]
     image: redis:7
     env_file:
       - ./infra/judge0/judge0.conf
@@ -63,8 +79,14 @@ services:
       - docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"
     ports:
       - "6380:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a judge0redis ping | grep -qx PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   judge0:
+    profiles: ["judge0-local"]
     image: judge0/judge0:1.13.1
     platform: linux/amd64
     depends_on:
@@ -77,8 +99,22 @@ services:
     privileged: true
     ports:
       - "2358:2358"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "ruby",
+          "-rnet/http",
+          "-ruri",
+          "-e",
+          "exit(Net::HTTP.get_response(URI('http://127.0.0.1:2358/languages')).is_a?(Net::HTTPSuccess) ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   judge0-workers:
+    profiles: ["judge0-local"]
     image: judge0/judge0:1.13.1
     platform: linux/amd64
     command:
@@ -91,6 +127,81 @@ services:
     volumes:
       - ./infra/judge0/judge0.conf:/judge0.conf:ro
     privileged: true
+
+  judge0-init:
+    profiles: ["judge0-local"]
+    image: postgres:16
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy
+    env_file:
+      - ./infra/judge0/judge0.conf
+    entrypoint:
+      - /bin/sh
+      - /bootstrap/bootstrap.sh
+    volumes:
+      - ./infra/judge0/bootstrap.sh:/bootstrap/bootstrap.sh:ro
+      - ./infra/judge0/customize-languages.sql:/bootstrap/customize-languages.sql:ro
+
+  gateway:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    environment:
+      APP_ENV: local
+      POSTGRES_DSN: postgresql+psycopg://postgres:postgres@postgres:5432/prescreen
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_RESUMES: resumes
+      AI_BASE_URL: https://aiapi.szmckj.cn
+      AI_MODEL: qwen3.6-35b-a3b
+      JUDGE0_BASE_URL: ${JUDGE0_BASE_URL:-http://192.168.100.189:2360}
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json, urllib.request; data = json.load(urllib.request.urlopen('http://127.0.0.1:8000/healthz')); assert data == {'service': 'gateway', 'status': 'ok'}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    ports:
+      - "5173:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - gateway
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   postgres_data:

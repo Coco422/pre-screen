@@ -1,6 +1,6 @@
 PRODUCT_LANGUAGE_IDS = {
-    "c": 50,
-    "cpp": 54,
+    "c": 48,
+    "cpp": 52,
     "java": 62,
     "python": 71,
     "javascript": 63,

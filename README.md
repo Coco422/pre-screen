@@ -2,7 +2,8 @@
 
 Pre-Screen is an MVP for technical candidate screening. This repository starts with the local
 development foundation, shared backend settings, and the local infrastructure needed for
-PostgreSQL, Redis, MinIO, and Judge0. The application services and web app are added in later
+PostgreSQL, Redis, and MinIO. Judge0 is developed against a dedicated AMD Linux host. The
+application services and web app are added in later
 tasks.
 
 ## Local setup
@@ -14,14 +15,15 @@ tasks.
 
 ## Judge0 note
 
-The local Judge0 stack follows the official split deployment pattern: one API container, one
-worker container, a dedicated Postgres database, and a dedicated Redis instance with password
-protection.
+macOS arm64 development uses the shared Judge0 host at `http://192.168.100.189:2360` by default.
+This avoids Docker Desktop issues with `isolate` and cgroup support.
 
-If you are running on macOS with Docker Desktop, Judge0 may still fail to execute code even when
-the API is healthy. Judge0 uses `isolate`, which expects Linux cgroup features that are not always
-available through Docker Desktop's VM layer. If you see errors mentioning `/sys/fs/cgroup/...` or
-`/box/...`, move the Judge0 runtime to a Linux host or VM and keep the rest of the stack local.
+If you later need to boot the bundled local Judge0 stack on an AMD Linux host, enable the
+`judge0-local` compose profile explicitly:
+
+```bash
+COMPOSE_PROFILES=judge0-local docker compose up -d judge0-db judge0-redis judge0 judge0-workers judge0-init
+```
 
 ## Layout
 

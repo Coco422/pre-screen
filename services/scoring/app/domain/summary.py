@@ -11,5 +11,4 @@ def build_score_summary(
         "coding_score": coding_score,
         "total_score": total_score,
         "risk_summary": risk_summary,
-        "has_risk_flags": bool(risk_summary),
     }

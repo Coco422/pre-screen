@@ -47,6 +47,7 @@ async def run_code(request: RunCodeRequest) -> dict:
     client = _get_client()
     result = execute_sync_case(
         client,
+        language=request.language,
         language_id=language_id,
         source_code=request.source_code,
         stdin=request.stdin,
@@ -69,6 +70,7 @@ async def submit_code(request: SubmitCodeRequest) -> dict:
     for testcase in request.testcases:
         result = execute_sync_case(
             client,
+            language=request.language,
             language_id=language_id,
             source_code=request.source_code,
             stdin=testcase.stdin,

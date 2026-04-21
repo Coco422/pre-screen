@@ -1,0 +1,13 @@
+.git
+.worktrees
+.venv
+.pytest_cache
+.ruff_cache
+node_modules
+dist
+coverage
+playwright-report
+tmp
+apps/web/node_modules
+apps/web/dist
+__pycache__

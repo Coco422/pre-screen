@@ -19,4 +19,4 @@ COPY services ./services
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "services.gateway.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "services.gateway.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -19,7 +19,6 @@ describe("adminNavigation", () => {
     const placeholderItems = adminNavigation.filter((item) => item.placeholder);
 
     expect(placeholderItems.map((item) => item.label)).toEqual([
-      "任务中心",
       "考卷管理",
       "风险管理",
       "系统设置"

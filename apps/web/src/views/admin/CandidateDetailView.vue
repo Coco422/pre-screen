@@ -1,124 +1,269 @@
 <template>
-  <section v-if="profile" class="detail-grid">
-    <article class="glass-card detail-card detail-card--hero">
-      <div class="detail-head">
-        <div>
-          <div class="pill">Candidate</div>
-          <h2 class="section-title detail-title">{{ profile.name }}</h2>
-          <p class="detail-meta">{{ profile.role }} · {{ profile.email || "邮箱待补齐" }} · {{ profile.city }}</p>
-        </div>
-        <div class="button-row">
-          <RouterLink class="secondary-btn" :to="{ name: 'admin-candidates' }">返回列表</RouterLink>
-          <RouterLink class="secondary-btn" :to="editTarget">编辑画像</RouterLink>
-          <RouterLink class="primary-btn" :to="paperTarget">去发卷</RouterLink>
-        </div>
+  <section v-if="profile" class="candidate-shell">
+    <header class="console-header">
+      <div class="header-copy">
+        <div class="header-eyebrow">Candidate Review</div>
+        <h1 class="header-title">{{ profile.name }}</h1>
+        <p class="header-meta">{{ profile.role }} · {{ profile.city }} · {{ profile.email || "邮箱待补齐" }}</p>
       </div>
 
-      <div class="tag-row">
-        <AdminToneBadge :label="profile.status" :tone="statusTone" />
-        <AdminToneBadge :label="`解析质量 ${profile.quality}`" :tone="signal.tone" />
-        <AdminToneBadge :label="signal.readinessLabel" :tone="signal.tone" />
-        <span class="tag-chip" v-for="skill in profile.skills" :key="skill">{{ skill }}</span>
+      <div class="header-actions">
+        <RouterLink class="ghost-btn" :to="{ name: 'admin-candidates' }">返回列表</RouterLink>
+        <RouterLink class="ghost-btn" :to="editTarget">编辑画像</RouterLink>
+        <RouterLink class="primary-btn" :to="paperTarget">去发卷</RouterLink>
       </div>
+    </header>
 
-      <div class="signal-grid">
-        <article class="signal-card">
-          <div class="signal-title">推荐动作</div>
-          <div class="action-stack">
-            <article class="action-card" v-for="action in actionItems" :key="action.title">
-              <div class="action-copy">
-                <AdminToneBadge :label="action.eyebrow" :tone="action.tone" />
-                <div class="action-title">{{ action.title }}</div>
-                <div class="action-detail">{{ action.detail }}</div>
-              </div>
-              <RouterLink v-if="action.to" class="secondary-btn inline-btn" :to="action.to">{{ action.cta }}</RouterLink>
+    <div class="status-strip">
+      <AdminToneBadge :label="profile.status" :tone="statusTone" />
+      <AdminToneBadge :label="`解析质量 ${profile.quality}`" :tone="signal.tone" />
+      <AdminToneBadge :label="signal.readinessLabel" :tone="signal.tone" />
+      <span class="status-note">{{ projectSummaryState.label }}</span>
+      <span class="skill-line">{{ profile.skills.join(" / ") }}</span>
+    </div>
+
+    <section class="candidate-console">
+      <div class="console-column">
+        <article class="console-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">候选人总览</p>
+              <h2>{{ profile.name }}</h2>
+            </div>
+            <div class="score-box">
+              <span>{{ signal.qualityScore }}</span>
+              <small>画像分</small>
+            </div>
+          </div>
+
+          <p class="panel-summary">{{ profile.projectSummary }}</p>
+
+          <div class="metric-grid">
+            <article class="metric-card">
+              <strong>{{ profile.parseMetrics.firstPageCharacters }}</strong>
+              <span>首页字符</span>
+            </article>
+            <article class="metric-card">
+              <strong>{{ profile.parseMetrics.multimodalPages }}</strong>
+              <span>补读页数</span>
+            </article>
+            <article class="metric-card">
+              <strong>{{ profile.availableInDays ?? "-" }}</strong>
+              <span>到岗天数</span>
             </article>
           </div>
         </article>
 
-        <article class="signal-card">
-          <div class="signal-title">解析质量</div>
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>基础档案</h3>
+            <AdminToneBadge :label="signal.qualityLabel" :tone="signal.tone" />
+          </div>
+
+          <dl class="fact-grid">
+            <div class="fact-item">
+              <dt>邮箱</dt>
+              <dd>{{ profile.email || "待补齐" }}</dd>
+            </div>
+            <div class="fact-item">
+              <dt>手机号</dt>
+              <dd>{{ profile.phone || "待补齐" }}</dd>
+            </div>
+            <div class="fact-item">
+              <dt>城市</dt>
+              <dd>{{ profile.city || "-" }}</dd>
+            </div>
+            <div class="fact-item">
+              <dt>兴趣</dt>
+              <dd>{{ profile.hobbies.length ? profile.hobbies.join(" / ") : "暂无" }}</dd>
+            </div>
+            <div class="fact-item">
+              <dt>身高</dt>
+              <dd>{{ profile.heightCm == null ? "-" : `${profile.heightCm} cm` }}</dd>
+            </div>
+            <div class="fact-item">
+              <dt>体重</dt>
+              <dd>{{ profile.weightKg == null ? "-" : `${profile.weightKg} kg` }}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>解析信号</h3>
+            <AdminToneBadge :label="`${riskItems.length} 项关注`" :tone="riskItems.length ? 'warning' : 'success'" />
+          </div>
           <AdminScoreBar
-            label="画像可用度"
+            label="推进建议"
             :value="signal.qualityScore"
             :percent="signal.qualityScore"
-            :detail="signal.qualityLabel"
+            :detail="signal.readinessLabel"
             :tone="signal.tone"
           />
-          <div class="metric-list">
-            <div class="metric-tile">
-              <div class="metric-value">{{ profile.parseMetrics.firstPageCharacters }}</div>
-              <div class="metric-label">首页字符</div>
-            </div>
-            <div class="metric-tile">
-              <div class="metric-value">{{ profile.parseMetrics.multimodalPages }}</div>
-              <div class="metric-label">补读页数</div>
-            </div>
-            <div class="metric-tile">
-              <div class="metric-value">{{ profile.availableInDays ?? "-" }}</div>
-              <div class="metric-label">预计到岗</div>
-            </div>
-          </div>
         </article>
       </div>
 
-      <div class="detail-section project-section">
-        <div class="detail-section-head">
-          <h3>项目摘要</h3>
-          <AdminToneBadge :label="projectSummaryState.label" :tone="projectSummaryState.tone" />
-        </div>
-        <p>{{ profile.projectSummary }}</p>
-      </div>
-    </article>
-
-    <article class="glass-card detail-card sidebar-card">
-      <div class="pill">Review</div>
-
-      <div class="detail-section">
-        <div class="detail-section-head">
-          <h3>解析风险</h3>
-          <AdminToneBadge :label="`${riskItems.length} 项关注`" :tone="riskItems.length ? 'warning' : 'success'" />
-        </div>
-        <div v-if="riskItems.length" class="risk-list">
-          <article class="risk-item" v-for="risk in riskItems" :key="risk.label">
-            <AdminToneBadge :label="risk.label" :tone="risk.tone" />
-            <p>{{ risk.detail }}</p>
-          </article>
-        </div>
-        <p v-else class="helper-copy">当前解析信号稳定，没有额外风险提醒。</p>
-      </div>
-
-      <div class="detail-section">
-        <h3>人工复核备注</h3>
-        <ul class="note-list">
-          <li v-for="note in profile.reviewNotes" :key="note">{{ note }}</li>
-        </ul>
-      </div>
-
-      <div class="detail-section">
-        <h3>联系与背景</h3>
-        <div class="fact-list">
-          <div class="fact-row">
-            <span>手机号</span>
-            <strong>{{ profile.phone || "待补齐" }}</strong>
+      <div class="console-column">
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <div>
+              <p class="panel-kicker">画像档案</p>
+              <h3>结构画像</h3>
+            </div>
+            <span class="panel-state">{{ profile.analysis.missingFields.length ? "待补字段" : "字段齐全" }}</span>
           </div>
-          <div class="fact-row">
-            <span>兴趣</span>
-            <strong>{{ profile.hobbies.length ? profile.hobbies.join(" / ") : "暂无" }}</strong>
+
+          <div class="archive-groups">
+            <section class="archive-group">
+              <h4>关注主题</h4>
+              <div class="chip-grid">
+                <span v-for="item in profile.analysis.focusTopics" :key="item" class="line-chip">{{ item }}</span>
+                <span v-if="!profile.analysis.focusTopics.length" class="line-chip line-chip--muted">暂无</span>
+              </div>
+            </section>
+
+            <section class="archive-group">
+              <h4>优势亮点</h4>
+              <ul class="line-list">
+                <li v-for="item in profile.analysis.strengths" :key="item">{{ item }}</li>
+                <li v-if="!profile.analysis.strengths.length">暂无</li>
+              </ul>
+            </section>
+
+            <section class="archive-group">
+              <h4>推荐语言</h4>
+              <div class="chip-grid">
+                <span v-for="item in profile.analysis.recommendedLanguages" :key="item" class="line-chip">{{ item }}</span>
+                <span v-if="!profile.analysis.recommendedLanguages.length" class="line-chip line-chip--muted">暂无</span>
+              </div>
+            </section>
+
+            <section class="archive-group">
+              <h4>缺失字段</h4>
+              <div class="chip-grid">
+                <span v-for="item in profile.analysis.missingFields" :key="item" class="line-chip line-chip--warning">{{ item }}</span>
+                <span v-if="!profile.analysis.missingFields.length" class="line-chip line-chip--success">无缺口</span>
+              </div>
+            </section>
           </div>
-          <div class="fact-row">
-            <span>邮箱</span>
-            <strong>{{ profile.email || "待补齐" }}</strong>
+        </article>
+
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>项目经历</h3>
+            <span class="panel-meta">{{ profile.projects.length }} 项</span>
           </div>
-        </div>
+
+          <div v-if="profile.projects.length" class="project-list">
+            <article v-for="project in profile.projects" :key="project.projectId" class="project-card">
+              <div class="project-head">
+                <div>
+                  <strong>{{ project.name }}</strong>
+                  <p>{{ project.role || "角色待补齐" }}</p>
+                </div>
+                <span class="confidence-chip">{{ project.confidence }}</span>
+              </div>
+              <p class="project-summary">{{ project.summary || "暂无项目摘要" }}</p>
+              <div class="chip-grid">
+                <span v-for="tech in project.techStack" :key="tech" class="line-chip">{{ tech }}</span>
+              </div>
+              <ul class="line-list">
+                <li v-for="item in project.achievements" :key="item">{{ item }}</li>
+                <li v-if="!project.achievements.length">暂无成果记录</li>
+              </ul>
+            </article>
+          </div>
+          <p v-else class="empty-copy">暂无项目经历。</p>
+        </article>
+
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>复核备注</h3>
+            <span class="panel-meta">{{ profile.reviewNotes.length }} 条</span>
+          </div>
+
+          <ul class="line-list">
+            <li v-for="note in profile.reviewNotes" :key="note">{{ note }}</li>
+            <li v-if="!profile.reviewNotes.length">暂无备注</li>
+          </ul>
+        </article>
       </div>
-    </article>
+
+      <div class="console-column">
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <div>
+              <p class="panel-kicker">风险与动作</p>
+              <h3>下一步动作</h3>
+            </div>
+            <span class="panel-meta">{{ actionItems.length }} 条</span>
+          </div>
+
+          <div class="action-list">
+            <article v-for="action in actionItems" :key="action.title" class="action-card">
+              <div class="action-copy">
+                <AdminToneBadge :label="action.eyebrow" :tone="action.tone" />
+                <strong>{{ action.title }}</strong>
+                <p>{{ action.detail }}</p>
+              </div>
+              <RouterLink v-if="action.to" class="inline-link" :to="action.to">{{ action.cta }}</RouterLink>
+            </article>
+          </div>
+        </article>
+
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>解析风险</h3>
+            <AdminToneBadge :label="`${riskItems.length} 项关注`" :tone="riskItems.length ? 'warning' : 'success'" />
+          </div>
+
+          <div v-if="riskItems.length" class="risk-list">
+            <article v-for="risk in riskItems" :key="risk.label" class="risk-card">
+              <div class="risk-head">
+                <AdminToneBadge :label="risk.label" :tone="risk.tone" />
+              </div>
+              <p>{{ risk.detail }}</p>
+            </article>
+          </div>
+          <p v-else class="empty-copy">当前解析信号稳定。</p>
+
+          <section class="analysis-risk-block">
+            <h4>分析提示</h4>
+            <ul class="line-list">
+              <li v-for="item in profile.analysis.risks" :key="item">{{ item }}</li>
+              <li v-if="!profile.analysis.risks.length">暂无额外提示</li>
+            </ul>
+          </section>
+        </article>
+
+        <article class="console-panel">
+          <div class="panel-head panel-head--compact">
+            <h3>交付索引</h3>
+            <span class="panel-meta">路由复用</span>
+          </div>
+
+          <dl class="fact-stack">
+            <div class="fact-stack__row">
+              <dt>考卷 ID</dt>
+              <dd>{{ profile.paperId || "待生成" }}</dd>
+            </div>
+            <div class="fact-stack__row">
+              <dt>邀请码</dt>
+              <dd>{{ profile.invitationToken || "未发布" }}</dd>
+            </div>
+            <div class="fact-stack__row">
+              <dt>结果 ID</dt>
+              <dd>{{ profile.resultId || "未交卷" }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+    </section>
   </section>
 
-  <section v-else class="glass-card loading-card">
-    <div class="pill">Candidate</div>
-    <h2 class="section-title">{{ loadError || "正在加载候选人详情..." }}</h2>
-    <p class="section-copy">详情页会以当前路由候选人为准，避免切换时残留上一位候选人的内容。</p>
+  <section v-else class="candidate-loading">
+    <div class="header-eyebrow">Candidate Review</div>
+    <h2 class="loading-title">{{ loadError || "正在加载候选人详情..." }}</h2>
   </section>
 </template>
 
@@ -142,7 +287,21 @@ import {
 } from "../../components/admin/adminUi";
 import { loadCandidateDetail, type CandidateDetail } from "../../lib/gateway";
 
-type CandidateDraft = Pick<CandidateDetail, "name" | "role" | "email" | "city" | "skills" | "projectSummary" | "reviewNotes">;
+type CandidateDraft = Pick<
+  CandidateDetail,
+  | "name"
+  | "role"
+  | "email"
+  | "city"
+  | "phone"
+  | "skills"
+  | "hobbies"
+  | "heightCm"
+  | "weightKg"
+  | "availableInDays"
+  | "projectSummary"
+  | "reviewNotes"
+>;
 
 const route = useRoute();
 const profile = ref<CandidateDetail | null>(null);
@@ -212,7 +371,7 @@ const actionItems = computed(() => {
       return {
         eyebrow: "优先处理",
         title: currentProfile.paperId ? "确认并发布考试入口" : "生成考卷并发布考试入口",
-        detail: "候选人画像已可用，下一步就是把考试入口发出去。",
+        detail: "画像已可用，直接推进发卷。",
         cta: "去发卷",
         to: paperTarget.value,
         tone: "success" as AdminTone
@@ -223,7 +382,7 @@ const actionItems = computed(() => {
       return {
         eyebrow: "建议修正",
         title: "补齐候选人画像",
-        detail: "存在缺失字段或解析风险，先修正画像能提升后续判断质量。",
+        detail: "先补缺口，再推进下一步。",
         cta: "编辑画像",
         to: editTarget.value,
         tone: "warning" as AdminTone
@@ -234,7 +393,7 @@ const actionItems = computed(() => {
       return {
         eyebrow: "已完成",
         title: "查看考试结果",
-        detail: "候选人已交卷，优先进入结果页判断评分与风险事件。",
+        detail: "已交卷，优先进入结果页。",
         cta: "查看结果",
         to: currentProfile.resultId ? buildResultDetailPath(currentProfile.resultId) : undefined,
         tone: "info" as AdminTone
@@ -245,7 +404,7 @@ const actionItems = computed(() => {
       return {
         eyebrow: "已发布",
         title: "查看考试入口状态",
-        detail: "考试入口已经生成，建议确认链接与验证码后继续催考。",
+        detail: "确认入口和验证码即可。",
         cta: "查看入口",
         to: paperTarget.value,
         tone: "info" as AdminTone
@@ -255,7 +414,7 @@ const actionItems = computed(() => {
     return {
       eyebrow: "跟进提醒",
       title: "安排候选人跟进",
-      detail: currentProfile.invitationToken ? "入口已生成，建议尽快发送并确认开考时间。" : "完成画像后及时推进下一步，避免候选人冷掉。",
+      detail: currentProfile.invitationToken ? "入口已生成，尽快发送并催考。" : "完成画像后及时推进。",
       cta: "查看画像",
       to: currentProfile.invitationToken ? paperTarget.value : editTarget.value,
       tone: "neutral" as AdminTone
@@ -289,8 +448,9 @@ function applyCandidateDraft(detail: CandidateDetail, targetCandidateId: string)
   return {
     ...detail,
     ...draft,
-    skills: Array.isArray(draft.skills) && draft.skills.length ? draft.skills : detail.skills,
-    reviewNotes: Array.isArray(draft.reviewNotes) && draft.reviewNotes.length ? draft.reviewNotes : detail.reviewNotes
+    skills: Array.isArray(draft.skills) ? draft.skills : detail.skills,
+    hobbies: Array.isArray(draft.hobbies) ? draft.hobbies : detail.hobbies,
+    reviewNotes: Array.isArray(draft.reviewNotes) ? draft.reviewNotes : detail.reviewNotes
   };
 }
 
@@ -327,171 +487,368 @@ watch(
 </script>
 
 <style scoped>
-.detail-grid {
+.candidate-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-  gap: 24px;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #ccd8e5;
+  background: #f4f8fc;
 }
 
-.detail-card {
-  padding: 24px;
+.console-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid #c5d4e2;
+  border-left: 4px solid #1f5f99;
+  background: #ffffff;
+  color: #123a60;
 }
 
-.detail-card--hero {
+.header-eyebrow,
+.panel-kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header-title {
+  margin: 10px 0 6px;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.header-meta,
+.panel-summary,
+.project-summary,
+.action-card p,
+.risk-card p {
+  margin: 0;
+  color: rgba(14, 30, 50, 0.72);
+  line-height: 1.7;
+}
+
+.header-meta {
+  color: #56718b;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.ghost-btn,
+.primary-btn,
+.inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.ghost-btn {
+  border: 1px solid #c5d4e2;
+  color: #184b79;
+  background: #ffffff;
+}
+
+.primary-btn {
+  border: 1px solid #1f5f99;
+  background: #1f5f99;
+  color: #ffffff;
+}
+
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid #d2dee9;
+  background: #ffffff;
+}
+
+.status-note,
+.skill-line,
+.panel-state {
+  color: #506a82;
+  font-size: 0.9rem;
+}
+
+.skill-line {
+  margin-left: auto;
+}
+
+.candidate-console {
   display: grid;
-  gap: 20px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.05fr) minmax(300px, 0.85fr);
+  gap: 14px;
 }
 
-.detail-head,
-.button-row,
-.detail-section-head,
-.fact-row {
+.console-column {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.console-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #d1dce7;
+  background: #ffffff;
+}
+
+.panel-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.button-row {
-  flex-wrap: wrap;
+.panel-head--compact {
+  align-items: center;
 }
 
-.detail-title {
-  margin: 16px 0 0;
-  font-size: 2rem;
+.panel-head h2,
+.panel-head h3,
+.archive-group h4,
+.analysis-risk-block h4 {
+  margin: 0;
 }
 
-.detail-meta,
-.detail-section p,
-.note-list,
-.helper-copy,
-.action-detail,
-.risk-item p {
-  color: var(--ink-soft);
-  line-height: 1.7;
-}
-
-.detail-meta {
-  margin: 12px 0 0;
-}
-
-.tag-row,
-.action-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tag-chip {
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(20, 33, 61, 0.06);
-  color: var(--ink-soft);
-}
-
-.signal-grid {
+.score-box {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  place-items: center;
+  min-width: 70px;
+  min-height: 70px;
+  border: 1px solid #bfd0e1;
+  background: #f7fbff;
+  color: #154d80;
 }
 
-.signal-card,
-.action-card,
-.risk-item {
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(20, 33, 61, 0.07);
-}
-
-.signal-card {
-  display: grid;
-  gap: 16px;
-}
-
-.signal-title,
-.action-title {
+.score-box span {
+  font-size: 1.55rem;
   font-weight: 700;
 }
 
-.action-stack,
-.risk-list {
-  display: grid;
-  gap: 12px;
+.score-box small,
+.panel-meta,
+.fact-item dt,
+.fact-stack__row dt {
+  color: #5c7289;
 }
 
-.action-card {
-  display: grid;
-  gap: 14px;
-}
-
-.action-copy {
-  display: grid;
-  gap: 10px;
-}
-
-.metric-list {
+.metric-grid,
+.fact-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.project-section {
-  padding: 18px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 246, 248, 0.88));
-}
-
-.detail-section {
+.metric-card,
+.project-card,
+.action-card,
+.risk-card {
   display: grid;
   gap: 10px;
+  padding: 14px;
+  border: 1px solid #dbe4ed;
+  background: #fbfdff;
 }
 
-.detail-section h3 {
-  margin: 0;
+.metric-card strong {
+  font-size: 1.35rem;
+  color: #123d65;
 }
 
-.sidebar-card {
+.metric-card span {
+  color: #5c7289;
+}
+
+.fact-item {
   display: grid;
-  align-content: start;
-  gap: 24px;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e1e9f0;
+  background: #fbfdff;
 }
 
-.note-list {
+.fact-item dd,
+.fact-stack__row dd {
+  margin: 0;
+  font-weight: 600;
+  color: #163b5f;
+}
+
+.archive-groups,
+.project-list,
+.action-list,
+.risk-list {
+  display: grid;
+  gap: 14px;
+}
+
+.archive-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e5edf5;
+}
+
+.archive-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.line-chip,
+.confidence-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d4e0eb;
+  background: #f7fbff;
+  color: #1b5a8f;
+  font-size: 0.88rem;
+}
+
+.line-chip--muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.line-chip--warning {
+  background: #fff4e8;
+  color: #b76b1d;
+}
+
+.line-chip--success {
+  background: #ecfdf3;
+  color: #1c7c4a;
+}
+
+.line-list {
   margin: 0;
   padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: #37536d;
 }
 
-.fact-list {
+.project-head,
+.risk-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-head p {
+  margin: 4px 0 0;
+  color: #5c7289;
+}
+
+.action-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.inline-link {
+  justify-self: flex-start;
+  padding: 0;
+  min-height: auto;
+  color: #1d64a1;
+}
+
+.analysis-risk-block {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.fact-stack {
+  margin: 0;
   display: grid;
   gap: 12px;
 }
 
-.fact-row {
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(20, 33, 61, 0.06);
+.fact-stack__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5edf5;
 }
 
-.fact-row span {
-  color: var(--ink-soft);
+.fact-stack__row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
-.loading-card {
+.empty-copy {
+  margin: 0;
+  color: #5c7289;
+}
+
+.candidate-loading {
+  display: grid;
+  gap: 8px;
   padding: 24px;
+  border: 1px solid #ccd8e5;
+  border-left: 4px solid #1f5f99;
+  background: #ffffff;
 }
 
-@media (max-width: 960px) {
-  .detail-grid,
-  .signal-grid,
-  .metric-list {
+.loading-title {
+  margin: 0;
+  color: #163b5f;
+}
+
+@media (max-width: 1180px) {
+  .candidate-console {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .candidate-shell {
+    padding: 16px;
+  }
+
+  .console-header,
+  .panel-head,
+  .panel-head--compact,
+  .fact-stack__row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .candidate-console,
+  .metric-grid,
+  .fact-grid {
     grid-template-columns: 1fr;
   }
 
-  .detail-head,
-  .button-row,
-  .detail-section-head,
-  .fact-row {
-    flex-direction: column;
+  .header-actions {
+    justify-content: flex-start;
   }
 }
 </style>

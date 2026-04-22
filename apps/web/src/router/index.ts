@@ -43,11 +43,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: "任务中心"
         },
-        component: () => import("../views/shared/PlaceholderView.vue"),
-        props: {
-          description: "任务中心将在后续阶段重构。",
-          iconLabel: "Tasks"
-        }
+        component: () => import("../views/admin/TaskListView.vue")
       },
       {
         path: "papers",

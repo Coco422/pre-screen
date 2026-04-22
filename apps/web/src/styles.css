@@ -217,6 +217,109 @@ select:disabled {
   padding: 24px;
 }
 
+.dashboard-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.dashboard-state-card {
+  padding: 20px 22px;
+  border-radius: 22px;
+  background: var(--admin-panel-strong);
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow);
+  color: var(--ink-soft);
+}
+
+.dashboard-error-banner {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  color: #991b1b;
+}
+
+.dashboard-error-banner strong {
+  color: #991b1b;
+}
+
+.dashboard-error-banner span {
+  line-height: 1.6;
+}
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dashboard-metric {
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--admin-panel-strong);
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow);
+}
+
+.dashboard-metric p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.dashboard-metric strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--ink-strong);
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  min-width: 0;
+}
+
+.dashboard-region {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.dashboard-region__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-region__head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.03em;
+}
+
+.dashboard-region__head p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.dashboard-region__head a {
+  flex: none;
+  color: var(--admin-accent-strong);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .placeholder-page {
   display: grid;
   place-items: center;
@@ -415,6 +518,11 @@ select:disabled {
   .admin-topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .dashboard-metrics,
+  .dashboard-columns {
+    grid-template-columns: 1fr;
   }
 }
 

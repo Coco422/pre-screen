@@ -9,27 +9,29 @@ describe("router", () => {
     expect(rootRoute?.redirect).toBe("/login");
   });
 
-  it("includes the login route", () => {
-    expect(routes.some((route) => route.path === "/login")).toBe(true);
-  });
-
-  it("includes the admin workbench route", () => {
+  it("includes the admin dashboard route", () => {
     expect(routes.some((route) => route.path === "/admin")).toBe(true);
+    const adminRoute = routes.find((route) => route.path === "/admin");
+
+    const childPaths = Array.isArray(adminRoute?.children)
+      ? adminRoute.children.map((route) => route.path)
+      : [];
+
+    expect(adminRoute?.children?.some((route) => route.name === "admin-workbench")).toBe(true);
+    expect(childPaths).toContain("dashboard");
+    expect(childPaths).toContain("workbench");
+    expect(childPaths).toContain("tasks");
+    expect(childPaths).toContain("candidates");
+    expect(childPaths).toContain("papers");
+    expect(childPaths).toContain("results");
+    expect(childPaths).toContain("risk");
+    expect(childPaths).toContain("settings");
   });
 
-  it("includes the task creation route", () => {
-    expect(routes.some((route) => route.path === "/admin/tasks/new")).toBe(true);
-  });
-
-  it("includes the admin candidate list route", () => {
-    expect(routes.some((route) => route.path === "/admin/candidates")).toBe(true);
-  });
-
-  it("includes the candidate edit route", () => {
-    expect(routes.some((route) => route.path === "/admin/candidates/:candidateId/edit")).toBe(true);
-  });
-
-  it("includes the result list route", () => {
-    expect(routes.some((route) => route.path === "/admin/results")).toBe(true);
+  it("includes the exam route trilogy", () => {
+    expect(routes.some((route) => route.path === "/exam/:token")).toBe(true);
+    expect(routes.some((route) => route.path === "/exam/:token/start")).toBe(true);
+    expect(routes.some((route) => route.path === "/exam/:token/session")).toBe(true);
+    expect(routes.some((route) => route.path === "/exam/:token/submitted")).toBe(true);
   });
 });

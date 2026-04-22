@@ -22,129 +22,153 @@ export const routes: RouteRecordRaw[] = [
     children: [
       {
         path: "",
+        redirect: "/admin/dashboard"
+      },
+      {
+        path: "workbench",
         name: "admin-workbench",
+        redirect: "/admin/dashboard"
+      },
+      {
+        path: "dashboard",
+        name: "admin-dashboard",
         meta: {
           title: "工作台"
         },
-        component: () => import("../views/admin/AdminWorkbenchView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/tasks/new",
-    component: AdminLayout,
-    children: [
+        component: () => import("../views/admin/AdminDashboardView.vue")
+      },
       {
-        path: "",
+        path: "tasks",
+        name: "admin-tasks",
+        meta: {
+          title: "任务中心"
+        },
+        component: () => import("../views/shared/PlaceholderView.vue"),
+        props: {
+          description: "任务中心将在后续阶段重构。",
+          iconLabel: "Tasks"
+        }
+      },
+      {
+        path: "papers",
+        name: "admin-papers",
+        meta: {
+          title: "考卷管理"
+        },
+        component: () => import("../views/shared/PlaceholderView.vue"),
+        props: {
+          description: "考卷管理列表将在后续阶段重构。",
+          iconLabel: "Papers"
+        }
+      },
+      {
+        path: "tasks/new",
         name: "admin-task-create",
         meta: {
           title: "新建筛选任务"
         },
         component: () => import("../views/admin/TaskCreateView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/tasks/:taskId",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "tasks/:taskId",
         name: "admin-task-detail",
         meta: {
           title: "任务详情"
         },
         component: () => import("../views/admin/TaskDetailView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/candidates",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "candidates",
         name: "admin-candidates",
         meta: {
           title: "候选人"
         },
         component: () => import("../views/admin/CandidateListView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/candidates/:candidateId",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "candidates/:candidateId",
         name: "admin-candidate-detail",
         meta: {
           title: "候选人详情"
         },
         component: () => import("../views/admin/CandidateDetailView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/candidates/:candidateId/edit",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "candidates/:candidateId/edit",
         name: "admin-candidate-edit",
         meta: {
           title: "编辑画像"
         },
         component: () => import("../views/admin/CandidateEditView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/papers/:paperId",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "papers/:paperId",
         name: "admin-paper-editor",
         meta: {
-          title: "考卷发布"
+          title: "考卷管理"
         },
         component: () => import("../views/admin/PaperEditorView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/results",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "results",
         name: "admin-results",
         meta: {
-          title: "作答结果"
+          title: "结果中心"
         },
         component: () => import("../views/admin/ResultListView.vue")
-      }
-    ]
-  },
-  {
-    path: "/admin/results/:resultId",
-    component: AdminLayout,
-    children: [
+      },
       {
-        path: "",
+        path: "results/:resultId",
         name: "admin-result-detail",
         meta: {
           title: "结果详情"
         },
         component: () => import("../views/admin/ResultDetailView.vue")
+      },
+      {
+        path: "risk",
+        name: "admin-risk",
+        meta: {
+          title: "风险管理"
+        },
+        component: () => import("../views/shared/PlaceholderView.vue"),
+        props: {
+          description: "风险管理将在后续阶段重构。",
+          iconLabel: "Risk"
+        }
+      },
+      {
+        path: "settings",
+        name: "admin-settings",
+        meta: {
+          title: "系统设置"
+        },
+        component: () => import("../views/shared/PlaceholderView.vue"),
+        props: {
+          description: "系统设置将在后续阶段重构。",
+          iconLabel: "Settings"
+        }
       }
     ]
   },
   {
     path: "/exam/:token",
-    component: () => import("../views/exam/ExamShellView.vue")
+    redirect: (to) => `/exam/${String(to.params.token)}/start`
+  },
+  {
+    path: "/exam/:token/start",
+    name: "exam-start",
+    component: () => import("../views/exam/ExamStartView.vue")
+  },
+  {
+    path: "/exam/:token/session",
+    name: "exam-session",
+    component: () => import("../views/exam/ExamSessionView.vue")
+  },
+  {
+    path: "/exam/:token/submitted",
+    name: "exam-submitted",
+    component: () => import("../views/exam/ExamSubmittedView.vue")
   }
 ];
 
@@ -162,7 +186,7 @@ router.beforeEach((to) => {
   }
 
   if (to.path === "/login" && loggedIn) {
-    return "/admin";
+    return "/admin/dashboard";
   }
 
   return true;

@@ -240,11 +240,11 @@ describe("CandidateDetailView", () => {
     await flushPromises();
     await nextTick();
 
-    expect(wrapper.find(".candidate-console").exists()).toBe(true);
-    expect(wrapper.findAll(".console-column")).toHaveLength(3);
-    expect(wrapper.text()).toContain("候选人总览");
-    expect(wrapper.text()).toContain("画像档案");
-    expect(wrapper.text()).toContain("风险与动作");
+    expect(wrapper.find(".review-board").exists()).toBe(true);
+    expect(wrapper.findAll(".review-panel")).toHaveLength(3);
+    expect(wrapper.text()).toContain("基本信息");
+    expect(wrapper.text()).toContain("结构化档案");
+    expect(wrapper.text()).toContain("风险与操作");
     expect(wrapper.text()).toContain("陈晓（草稿）");
     expect(wrapper.text()).toContain("draft@example.com");
     expect(wrapper.text()).toContain("Prompt Design");
@@ -252,7 +252,7 @@ describe("CandidateDetailView", () => {
     expect(wrapper.text()).toContain("复杂表单");
     expect(wrapper.text()).toContain("招聘中台");
     expect(wrapper.text()).toContain("草稿备注：优先确认管理跨度");
+    expect(wrapper.text()).toContain("编辑画像");
     expect(wrapper.find(".hero-panel").exists()).toBe(false);
-    expect(wrapper.find(".score-pill").exists()).toBe(false);
   });
 });

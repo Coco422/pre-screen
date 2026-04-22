@@ -90,7 +90,7 @@ function createStubs() {
     }),
     ElTableColumn: defineComponent({
       name: "ElTableColumn",
-      props: ["label", "minWidth", "width", "prop"],
+      props: ["label", "minWidth", "width", "prop", "fixed"],
       setup(props, { slots }) {
         const rows = inject<Ref<TaskRow[]>>(tableRowsKey, ref<TaskRow[]>([]));
 
@@ -119,6 +119,12 @@ function createStubs() {
       name: "ElTag",
       props: ["type", "effect"],
       template: "<span class='tag-stub' :data-type='type'><slot /></span>"
+    },
+    ElProgress: {
+      name: "ElProgress",
+      props: ["percentage", "showText", "strokeWidth", "status"],
+      template:
+        "<div class='el-progress-stub' :data-percentage='percentage' :data-status='status'>{{ percentage }}%</div>"
     },
     ElEmpty: {
       name: "ElEmpty",
@@ -159,7 +165,7 @@ describe("TaskListView", () => {
     mocks.loadTasks.mockReset();
   });
 
-  it("renders row slots from the table data and keeps the create CTA as a single interactive element", async () => {
+  it("renders the tightened task table with a derived owner and row actions", async () => {
     const deferred = createDeferred<TaskRow[]>();
     mocks.loadTasks.mockReturnValue(deferred.promise);
 
@@ -192,6 +198,7 @@ describe("TaskListView", () => {
         createdAt: "2026-04-19T09:00:00Z"
       }
     ] satisfies TaskRow[];
+
     const wrapper = mountTaskList();
 
     await nextTick();
@@ -202,31 +209,40 @@ describe("TaskListView", () => {
     await flushPromises();
     await nextTick();
 
-    const linkTargets = wrapper
-      .findAllComponents({ name: "RouterLink" })
-      .map((component) => JSON.stringify(component.props("to")));
-    const titleLinks = wrapper.findAll(".task-cell__link");
-
     expect(wrapper.text()).toContain("任务中心");
     expect(wrapper.text()).toContain("筛选任务列表");
+    expect(wrapper.text()).toContain("条任务");
     expect(wrapper.text()).toContain("新建任务");
-    expect(wrapper.text()).toContain("任务信息");
-    expect(wrapper.text()).toContain("全部岗位");
-    expect(wrapper.text()).toContain("全部状态");
-    expect(wrapper.find(".input-stub").attributes("placeholder")).toContain("搜索");
-    expect(wrapper.find(".el-table").text()).toContain("前端开发首轮筛选");
-    expect(wrapper.find(".el-table").text()).toContain("后端开发补录");
-    expect(wrapper.find(".el-table").text()).toContain("前端开发终面池");
-    expect(wrapper.text()).toContain("3/5");
-    expect(wrapper.text()).toContain("8/8");
-    expect(wrapper.text()).toContain("0/0");
-    expect(wrapper.text()).toContain("已入库");
+    expect(wrapper.find(".task-list-page__create").exists()).toBe(true);
+    expect(wrapper.text()).toContain("任务名称");
+    expect(wrapper.text()).toContain("岗位");
+    expect(wrapper.text()).toContain("负责人");
+    expect(wrapper.text()).toContain("创建时间");
+    expect(wrapper.text()).toContain("候选人数");
+    expect(wrapper.text()).toContain("进度");
+    expect(wrapper.text()).toContain("状态");
+    expect(wrapper.text()).toContain("操作");
+    expect(wrapper.text()).toContain("前端开发首轮筛选");
+    expect(wrapper.text()).toContain("后端开发补录");
+    expect(wrapper.text()).toContain("前端开发终面池");
+    expect(wrapper.text()).toContain("系统分配 ·");
+    expect(wrapper.text()).toContain("2026-04-21 17:00");
+    expect(wrapper.text()).toContain("3 人");
+    expect(wrapper.text()).toContain("60%");
+    expect(wrapper.text()).toContain("100%");
+    expect(wrapper.text()).toContain("0%");
     expect(wrapper.text()).toContain("已完成");
     expect(wrapper.text()).toContain("待上传");
-    expect(wrapper.text()).not.toContain("将在后续阶段重构");
-    expect(wrapper.text()).not.toContain("操作");
-    expect(linkTargets.some((target) => target?.includes("\"name\":\"admin-task-create\""))).toBe(true);
-    expect(wrapper.find(".task-list-page__header > .router-link-stub > .el-button-stub").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("简历");
+
+    const createTargets = wrapper
+      .findAllComponents({ name: "RouterLink" })
+      .map((component) => JSON.stringify(component.props("to")));
+
+    expect(createTargets.some((target) => target?.includes("\"name\":\"admin-task-create\""))).toBe(true);
+    expect(wrapper.findAll(".task-list-page__action")).toHaveLength(rows.length);
+
+    const titleLinks = wrapper.findAll(".task-cell__link");
     expect(titleLinks).toHaveLength(rows.length);
     expect(titleLinks[0]?.attributes("data-to")).toContain("\"name\":\"admin-task-detail\"");
     expect(titleLinks[0]?.attributes("data-to")).toContain("\"taskId\":\"task-1\"");
@@ -282,8 +298,8 @@ describe("TaskListView", () => {
     expect(tableText).toContain("前端开发首轮筛选");
     expect(tableText).not.toContain("后端开发补录");
     expect(tableText).not.toContain("前端开发终面池");
+    expect(tableText).toContain("60%");
     expect(tableText).toContain("3/5");
-    expect(tableText).toContain("已入库");
     expect(detailLinks).toHaveLength(1);
     expect(detailLinks[0]?.attributes("data-to")).toContain("\"taskId\":\"task-1\"");
   });

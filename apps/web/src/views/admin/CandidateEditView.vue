@@ -1,16 +1,16 @@
 <template>
-  <section v-if="ready" class="edit-shell">
-    <header class="workspace-header">
-      <div class="workspace-copy">
-        <div class="workspace-eyebrow">Profile Edit</div>
-        <h1 class="workspace-title">编辑候选人画像</h1>
-        <p class="workspace-meta">{{ form.name || sourceDetail?.name || "候选人" }} · {{ form.role || "岗位待补齐" }}</p>
+  <section v-if="ready" class="candidate-edit-page">
+    <header class="edit-page__header">
+      <div class="edit-page__copy">
+        <p class="edit-page__eyebrow">编辑画像</p>
+        <h1 class="edit-page__title">候选人画像编辑</h1>
+        <p class="edit-page__meta">{{ form.name || sourceDetail?.name || "候选人" }} · {{ form.role || "岗位待补齐" }}</p>
       </div>
 
-      <div class="workspace-actions">
-        <RouterLink class="ghost-btn" :to="detailTarget">返回详情</RouterLink>
-        <RouterLink class="ghost-btn" :to="paperTarget">去发卷</RouterLink>
-        <button data-testid="save-profile" class="primary-btn" type="button" @click="saveDraft">保存画像</button>
+      <div class="edit-page__actions">
+        <RouterLink class="edit-btn edit-btn--ghost" :to="detailTarget">返回详情</RouterLink>
+        <RouterLink class="edit-btn edit-btn--ghost" :to="paperTarget">去发卷</RouterLink>
+        <button data-testid="save-profile" class="edit-btn edit-btn--primary" type="button" @click="saveDraft">保存画像</button>
       </div>
     </header>
 
@@ -23,15 +23,49 @@
       class="save-alert"
     />
 
-    <section class="edit-workspace">
-      <div class="workspace-main">
-        <article class="workspace-panel">
-          <div class="panel-head">
+    <div class="edit-page__layout">
+      <aside class="edit-page__nav">
+        <article class="nav-card">
+          <p class="nav-card__eyebrow">编辑区块</p>
+          <div class="nav-list">
+            <a href="#basic-info" class="nav-item nav-item--active">基本信息</a>
+            <a href="#skills" class="nav-item">技能标签</a>
+            <a href="#summary" class="nav-item">项目摘要</a>
+            <a href="#review-notes" class="nav-item">复核备注</a>
+          </div>
+        </article>
+
+        <article class="nav-card">
+          <div class="nav-score">
+            <span>岗位匹配度</span>
+            <strong>{{ currentSignal?.qualityScore ?? 0 }}%</strong>
+          </div>
+          <div class="nav-score__track">
+            <span :style="{ width: `${currentSignal?.qualityScore ?? 0}%` }"></span>
+          </div>
+          <p class="nav-score__copy">{{ currentSignal?.readinessLabel ?? "等待解析结果" }}</p>
+        </article>
+
+        <article class="nav-card">
+          <div class="nav-card__head">
+            <span>原始信号</span>
+            <span>{{ sourceDetail?.analysis.missingFields.length ?? 0 }} 项缺口</span>
+          </div>
+          <div class="tag-cloud">
+            <span v-for="item in sourceDetail?.analysis.recommendedLanguages || []" :key="item" class="tag-chip">{{ item }}</span>
+            <span v-if="!(sourceDetail?.analysis.recommendedLanguages || []).length" class="tag-chip tag-chip--muted">暂无</span>
+          </div>
+        </article>
+      </aside>
+
+      <section class="edit-page__content">
+        <article id="basic-info" class="edit-card">
+          <div class="edit-card__head">
             <div>
-              <p class="panel-kicker">基础资料</p>
+              <p class="edit-card__eyebrow">基本信息</p>
               <h2>联系信息与到岗信号</h2>
             </div>
-            <div class="panel-badges">
+            <div class="edit-card__badges">
               <ElTag effect="plain">{{ sourceDetail?.status || "待复核" }}</ElTag>
               <ElTag effect="plain" type="info">{{ sourceDetail?.quality || "待解析" }}</ElTag>
             </div>
@@ -73,38 +107,93 @@
           </div>
         </article>
 
-        <article class="workspace-panel">
-          <div class="panel-head">
+        <article id="skills" class="edit-card">
+          <div class="edit-card__head">
             <div>
-              <p class="panel-kicker">结构画像</p>
-              <h2>标签、兴趣与项目摘要</h2>
+              <p class="edit-card__eyebrow">结构化档案</p>
+              <h2>技能标签与兴趣标签</h2>
             </div>
-            <span class="panel-meta">结构字段</span>
+            <span class="edit-card__meta">标签化输入</span>
           </div>
 
-          <div class="field-grid field-grid--wide">
+          <div class="field-grid field-grid--single">
             <label class="field field--full">
               <span>技能标签（逗号分隔）</span>
               <input v-model="form.skillsText" name="skillsText" class="field-input" />
             </label>
+            <div class="preview-block">
+              <span class="preview-block__label">技能预览</span>
+              <div class="tag-cloud">
+                <span v-for="item in skillPreview" :key="item" class="tag-chip">{{ item }}</span>
+                <span v-if="!skillPreview.length" class="tag-chip tag-chip--muted">暂无</span>
+              </div>
+            </div>
+
             <label class="field field--full">
               <span>爱好标签（逗号分隔）</span>
               <input v-model="form.hobbiesText" name="hobbiesText" class="field-input" />
             </label>
-            <label class="field field--full">
-              <span>项目摘要</span>
-              <textarea v-model="form.projectSummary" name="projectSummary" class="field-input field-textarea" rows="6" />
-            </label>
+            <div class="preview-block">
+              <span class="preview-block__label">兴趣预览</span>
+              <div class="tag-cloud">
+                <span v-for="item in hobbyPreview" :key="item" class="tag-chip tag-chip--light">{{ item }}</span>
+                <span v-if="!hobbyPreview.length" class="tag-chip tag-chip--muted">暂无</span>
+              </div>
+            </div>
           </div>
         </article>
 
-        <article class="workspace-panel">
-          <div class="panel-head">
+        <article id="summary" class="edit-card">
+          <div class="edit-card__head">
             <div>
-              <p class="panel-kicker">复核备注</p>
+              <p class="edit-card__eyebrow">岗位匹配</p>
+              <h2>项目摘要与推荐信号</h2>
+            </div>
+            <span class="edit-card__meta">{{ currentSignal?.qualityLabel || "待解析" }}</span>
+          </div>
+
+          <div class="match-panel">
+            <div class="nav-score">
+              <span>岗位匹配度</span>
+              <strong>{{ currentSignal?.qualityScore ?? 0 }}%</strong>
+            </div>
+            <div class="nav-score__track">
+              <span :style="{ width: `${currentSignal?.qualityScore ?? 0}%` }"></span>
+            </div>
+            <p class="nav-score__copy">{{ currentSignal?.readinessLabel ?? "等待解析结果" }}</p>
+          </div>
+
+          <label class="field field--full">
+            <span>项目摘要</span>
+            <textarea v-model="form.projectSummary" name="projectSummary" class="field-input field-textarea" rows="7" />
+          </label>
+
+          <div class="signal-grid">
+            <section class="signal-card">
+              <h3>缺失字段</h3>
+              <div class="tag-cloud">
+                <span v-for="item in sourceDetail?.analysis.missingFields || []" :key="item" class="tag-chip tag-chip--warning">{{ item }}</span>
+                <span v-if="!(sourceDetail?.analysis.missingFields || []).length" class="tag-chip tag-chip--success">无缺口</span>
+              </div>
+            </section>
+
+            <section class="signal-card">
+              <h3>关注主题</h3>
+              <ul class="signal-list">
+                <li v-for="item in sourceDetail?.analysis.focusTopics || []" :key="item">{{ item }}</li>
+                <li v-if="!(sourceDetail?.analysis.focusTopics || []).length">暂无</li>
+              </ul>
+            </section>
+          </div>
+        </article>
+
+        <article id="review-notes" class="edit-card">
+          <div class="edit-card__head">
+            <div>
+              <p class="edit-card__eyebrow">复核备注</p>
               <h2>人工修订记录</h2>
             </div>
-            <span class="panel-meta">每行一条</span>
+            <span class="edit-card__meta">每行一条</span>
           </div>
 
           <label class="field field--full">
@@ -116,78 +205,34 @@
               rows="8"
             />
           </label>
-        </article>
-      </div>
 
-      <aside class="workspace-sidebar">
-        <article class="workspace-panel sidebar-panel">
-          <div class="panel-head">
-            <div>
-              <p class="panel-kicker">当前信号</p>
-              <h3>解析侧栏</h3>
+          <section class="project-index">
+            <div class="project-index__head">
+              <h3>项目索引</h3>
+              <span>{{ sourceDetail?.projects.length || 0 }} 项</span>
             </div>
-          </div>
-
-          <section class="sidebar-block">
-            <h4>推荐语言</h4>
-            <div class="chip-grid">
-              <span v-for="item in sourceDetail?.analysis.recommendedLanguages || []" :key="item" class="line-chip">{{ item }}</span>
-              <span v-if="!(sourceDetail?.analysis.recommendedLanguages || []).length" class="line-chip line-chip--muted">暂无</span>
+            <div v-if="sourceDetail?.projects.length" class="project-index__list">
+              <article v-for="project in sourceDetail.projects" :key="project.projectId" class="project-index__item">
+                <strong>{{ project.name }}</strong>
+                <p>{{ project.summary || "暂无项目摘要" }}</p>
+              </article>
             </div>
-          </section>
-
-          <section class="sidebar-block">
-            <h4>缺失字段</h4>
-            <div class="chip-grid">
-              <span v-for="item in sourceDetail?.analysis.missingFields || []" :key="item" class="line-chip line-chip--warning">{{ item }}</span>
-              <span v-if="!(sourceDetail?.analysis.missingFields || []).length" class="line-chip line-chip--success">无缺口</span>
-            </div>
-          </section>
-
-          <section class="sidebar-block">
-            <h4>关注主题</h4>
-            <ul class="line-list">
-              <li v-for="item in sourceDetail?.analysis.focusTopics || []" :key="item">{{ item }}</li>
-              <li v-if="!(sourceDetail?.analysis.focusTopics || []).length">暂无</li>
-            </ul>
+            <p v-else class="empty-copy">暂无项目经历。</p>
           </section>
         </article>
 
-        <article class="workspace-panel sidebar-panel">
-          <div class="panel-head">
-            <div>
-              <p class="panel-kicker">项目索引</p>
-              <h3>原始画像</h3>
-            </div>
-            <span class="panel-meta">{{ sourceDetail?.projects.length || 0 }} 项</span>
-          </div>
-
-          <div v-if="sourceDetail?.projects.length" class="project-list">
-            <article v-for="project in sourceDetail.projects" :key="project.projectId" class="project-card">
-              <strong>{{ project.name }}</strong>
-              <p>{{ project.summary || "暂无项目摘要" }}</p>
-            </article>
-          </div>
-          <p v-else class="empty-copy">暂无项目经历。</p>
-        </article>
-
-        <article class="workspace-panel sidebar-panel">
-          <div class="panel-head">
-            <div>
-              <p class="panel-kicker">草稿控制</p>
-              <h3>本地暂存</h3>
-            </div>
-          </div>
-
-          <button class="ghost-btn ghost-btn--dark" type="button" @click="resetDraft">撤销本地暂存</button>
-        </article>
-      </aside>
-    </section>
+        <footer class="edit-page__footer">
+          <RouterLink class="edit-btn edit-btn--ghost" :to="detailTarget">取消</RouterLink>
+          <button class="edit-btn edit-btn--light" type="button" @click="resetDraft">撤销本地暂存</button>
+          <button class="edit-btn edit-btn--primary" type="button" @click="saveDraft">保存</button>
+        </footer>
+      </section>
+    </div>
   </section>
 
   <section v-else class="edit-loading">
-    <div class="workspace-eyebrow">Profile Edit</div>
-    <h2 class="workspace-title">{{ loadError || "正在加载候选人画像..." }}</h2>
+    <div class="edit-page__eyebrow">编辑画像</div>
+    <h2 class="edit-page__title">{{ loadError || "正在加载候选人画像..." }}</h2>
   </section>
 </template>
 
@@ -201,6 +246,7 @@ import {
   buildPaperEditorPath,
   buildPaperRouteTarget
 } from "../../components/admin/adminRouting";
+import { buildCandidateSignal } from "../../components/admin/adminUi";
 import { loadCandidateDetail, type CandidateDetail } from "../../lib/gateway";
 
 type CandidateDraft = Pick<
@@ -308,6 +354,19 @@ const paperTarget = computed(() => ({
     candidateName: form.name
   }
 }));
+const currentSignal = computed(() => (sourceDetail.value ? buildCandidateSignal(sourceDetail.value) : null));
+const skillPreview = computed(() =>
+  form.skillsText
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
+const hobbyPreview = computed(() =>
+  form.hobbiesText
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+);
 
 function readDraft(targetCandidateId: string): Partial<CandidateDraft> | null {
   if (typeof window === "undefined") {
@@ -578,159 +637,210 @@ watch(
 </script>
 
 <style scoped>
-.edit-shell {
+.candidate-edit-page {
   display: grid;
   gap: 14px;
-  padding: 18px;
-  border: 1px solid #ccd8e5;
-  background: #f4f8fc;
+  min-height: 100%;
+  padding: 16px 18px 18px;
+  border: 1px solid #d7e1ee;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7fbff 0%, #f3f7fd 100%), #f7fbff;
 }
 
-.workspace-header {
+.edit-page__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
-  border: 1px solid #c5d4e2;
-  border-left: 4px solid #1f5f99;
-  background: #ffffff;
-  color: #123a60;
+  gap: 18px;
+  padding: 4px 2px 10px;
+  border-bottom: 1px solid #dde7f2;
 }
 
-.workspace-eyebrow,
-.panel-kicker {
+.edit-page__copy {
+  display: grid;
+  gap: 6px;
+}
+
+.edit-page__eyebrow,
+.edit-card__eyebrow,
+.nav-card__eyebrow {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  color: #5d7596;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
-.workspace-title {
-  margin: 10px 0 6px;
-  font-size: 2rem;
+.edit-page__title {
+  margin: 0;
+  color: #1a2a41;
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1.1;
 }
 
-.workspace-meta {
+.edit-page__meta,
+.nav-score__copy,
+.preview-block__label,
+.edit-card__meta,
+.empty-copy,
+.project-index__item p {
   margin: 0;
-  color: #56718b;
+  color: #58708f;
+  line-height: 1.6;
 }
 
-.workspace-meta--loading {
-  color: #5c7289;
-}
-
-.workspace-actions {
+.edit-page__actions,
+.edit-page__footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }
 
-.ghost-btn,
-.primary-btn {
+.edit-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 16px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.ghost-btn {
-  border: 1px solid #c5d4e2;
-  color: #184b79;
+  border: 1px solid #d3deeb;
+  border-radius: 10px;
   background: #ffffff;
-}
-
-.ghost-btn--dark {
-  width: 100%;
-  border-color: #c5d9ec;
-  color: #1d64a1;
-  background: #edf5fd;
-}
-
-.primary-btn {
-  border: 1px solid #1f5f99;
-  color: #ffffff;
-  background: #1f5f99;
+  color: #245389;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.save-alert {
-  border-radius: 0;
+.edit-btn--primary {
+  border-color: #2f6cf6;
+  background: linear-gradient(180deg, #4384ff 0%, #2f6cf6 100%);
+  color: #ffffff;
 }
 
-.edit-workspace {
+.edit-btn--light {
+  background: #f5f9ff;
+}
+
+.save-alert {
+  border-radius: 12px;
+}
+
+.edit-page__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.8fr);
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
   gap: 14px;
 }
 
-.workspace-main,
-.workspace-sidebar {
+.edit-page__nav,
+.edit-page__content {
   display: grid;
   align-content: start;
   gap: 14px;
 }
 
-.workspace-panel {
+.nav-card,
+.edit-card {
   display: grid;
   gap: 16px;
   padding: 18px;
-  border: 1px solid #d1dce7;
+  border: 1px solid #d6e0ec;
+  border-radius: 12px;
   background: #ffffff;
 }
 
-.sidebar-panel {
-  gap: 14px;
+.nav-list {
+  display: grid;
+  gap: 8px;
 }
 
-.panel-head {
+.nav-item {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #e2eaf3;
+  border-radius: 10px;
+  color: #4f6786;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nav-item--active {
+  border-color: #cfe0ff;
+  background: #f5f9ff;
+  color: #2f6cf6;
+}
+
+.nav-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: #223550;
+}
+
+.nav-score strong {
+  color: #2f6cf6;
+  font-size: 20px;
+}
+
+.nav-score__track {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: #e7eef8;
+}
+
+.nav-score__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #5d8ef0 0%, #2f69d9 100%);
+}
+
+.nav-card__head,
+.project-index__head,
+.edit-card__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.panel-head h2,
-.panel-head h3,
-.sidebar-block h4 {
+.edit-card__head h2,
+.project-index__head h3,
+.signal-card h3 {
   margin: 0;
+  color: #1a2a41;
 }
 
-.panel-badges {
+.edit-card__badges {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.panel-meta,
-.field span,
-.sidebar-copy,
-.empty-copy {
-  color: #5c7289;
 }
 
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  padding-top: 4px;
-  border-top: 1px solid #e4ebf2;
 }
 
-.field-grid--wide {
+.field-grid--single {
   grid-template-columns: 1fr;
 }
 
 .field {
   display: grid;
   gap: 8px;
+}
+
+.field span {
+  color: #5d7596;
 }
 
 .field--full {
@@ -742,6 +852,7 @@ watch(
   min-height: 44px;
   padding: 10px 14px;
   border: 1px solid #c9d9ea;
+  border-radius: 10px;
   background: #fbfdff;
   color: #163b5f;
   font: inherit;
@@ -756,105 +867,145 @@ watch(
 
 .field-textarea {
   resize: vertical;
-  min-height: 140px;
+  min-height: 160px;
 }
 
 .field-textarea--tall {
-  min-height: 200px;
+  min-height: 220px;
 }
 
-.sidebar-block,
-.project-list {
+.preview-block,
+.project-index,
+.match-panel {
   display: grid;
   gap: 10px;
 }
 
-.chip-grid {
+.tag-cloud {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.line-chip {
+.tag-chip {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
-  background: #edf4fb;
-  color: #1b5a8f;
-  font-size: 0.88rem;
+  border: 1px solid #d7e4f3;
+  border-radius: 8px;
+  background: #f5f9ff;
+  color: #2a65b8;
+  font-size: 13px;
 }
 
-.line-chip--muted {
-  background: #f1f5f9;
-  color: #64748b;
+.tag-chip--light {
+  background: #ffffff;
+  color: #51739e;
 }
 
-.line-chip--warning {
-  background: #fff4e8;
-  color: #b76b1d;
+.tag-chip--warning {
+  border-color: #f2d8ac;
+  background: #fff9ef;
+  color: #b06b00;
 }
 
-.line-chip--success {
-  background: #ecfdf3;
-  color: #1c7c4a;
+.tag-chip--success {
+  border-color: #cfe4d3;
+  background: #f4fbf6;
+  color: #2d7a49;
 }
 
-.line-list {
-  margin: 0;
-  padding-left: 18px;
+.tag-chip--muted {
+  color: #6b7f98;
+}
+
+.signal-grid {
   display: grid;
-  gap: 8px;
-  color: #37536d;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.project-card {
+.signal-card {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 14px;
-  border: 1px solid #dbe6f1;
+  border: 1px solid #e3ebf4;
+  border-radius: 10px;
   background: #fbfdff;
 }
 
-.project-card p {
+.signal-list {
+  display: grid;
+  gap: 8px;
   margin: 0;
-  color: #5c7289;
-  line-height: 1.6;
+  padding-left: 18px;
+  color: #253852;
+}
+
+.project-index__head span {
+  color: #617793;
+  font-size: 13px;
+}
+
+.project-index__list {
+  display: grid;
+  gap: 10px;
+}
+
+.project-index__item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid #e5ecf5;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.project-index__item strong {
+  color: #1d2d43;
+}
+
+.edit-page__footer {
+  justify-content: flex-end;
 }
 
 .edit-loading {
   display: grid;
-  gap: 8px;
-  padding: 24px;
-  border: 1px solid #ccd8e5;
-  border-left: 4px solid #1f5f99;
-  background: #ffffff;
+  gap: 10px;
+  padding: 40px 24px;
+  border: 1px solid #d7e1ee;
+  border-radius: 14px;
+  background: #f4f7fb;
 }
 
-@media (max-width: 1080px) {
-  .edit-workspace {
+@media (max-width: 1200px) {
+  .edit-page__layout {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 900px) {
-  .edit-shell {
-    padding: 16px;
+@media (max-width: 768px) {
+  .candidate-edit-page {
+    padding: 14px;
   }
 
-  .workspace-header,
-  .panel-head {
+  .edit-page__header {
     flex-direction: column;
-    align-items: flex-start;
   }
 
-  .workspace-actions {
-    justify-content: flex-start;
-  }
-
-  .field-grid {
+  .field-grid,
+  .signal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .edit-page__actions,
+  .edit-page__footer {
+    width: 100%;
+  }
+
+  .edit-btn {
+    width: 100%;
   }
 }
 </style>

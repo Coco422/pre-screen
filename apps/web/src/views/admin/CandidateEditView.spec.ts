@@ -320,9 +320,9 @@ describe("CandidateEditView", () => {
     await flushPromises();
     await nextTick();
 
-    expect(wrapper.find(".edit-workspace").exists()).toBe(true);
-    expect(wrapper.text()).toContain("基础资料");
-    expect(wrapper.text()).toContain("结构画像");
+    expect(wrapper.find(".edit-page__layout").exists()).toBe(true);
+    expect(wrapper.text()).toContain("基本信息");
+    expect(wrapper.text()).toContain("结构化档案");
     expect(wrapper.text()).toContain("复核备注");
     expect(wrapper.text()).not.toContain("直接覆盖本地草稿");
     expect(wrapper.text()).not.toContain("保存优先写后端，失败时自动落本地草稿");

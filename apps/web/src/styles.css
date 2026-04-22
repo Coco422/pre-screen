@@ -217,6 +217,52 @@ select:disabled {
   padding: 24px;
 }
 
+.candidate-page {
+  display: grid;
+  gap: 18px;
+}
+
+.candidate-page__head {
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-page__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 320px);
+  gap: 12px;
+}
+
+.candidate-page__filters .el-select,
+.candidate-page__filters .el-input {
+  width: 100%;
+}
+
+.candidate-page__state {
+  padding: 20px 22px;
+  border-radius: 22px;
+  background: var(--admin-panel-strong);
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow);
+  color: var(--ink-soft);
+}
+
+.candidate-page__state--error {
+  color: #991b1b;
+}
+
+.candidate-page__table {
+  width: 100%;
+}
+
+.candidate-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--admin-accent-strong);
+  font-weight: 600;
+}
+
 .dashboard-page {
   display: grid;
   gap: 20px;
@@ -522,6 +568,10 @@ select:disabled {
 
   .dashboard-metrics,
   .dashboard-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .candidate-page__filters {
     grid-template-columns: 1fr;
   }
 }

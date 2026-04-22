@@ -546,6 +546,14 @@ select:disabled {
   font-weight: 700;
 }
 
+@media (max-width: 1200px) {
+  .dashboard-metrics,
+  .dashboard-columns,
+  .candidate-page__filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 960px) {
   .grid-two,
   .grid-three {
@@ -564,15 +572,6 @@ select:disabled {
   .admin-topbar {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .dashboard-metrics,
-  .dashboard-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .candidate-page__filters {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -703,11 +702,13 @@ select:disabled {
   width: 100%;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .login-screen {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 960px) {
   .login-hero {
     min-height: 300px;
   }

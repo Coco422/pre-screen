@@ -172,22 +172,28 @@ export const routes: RouteRecordRaw[] = [
   }
 ];
 
-export const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
+export function createAppRouter() {
+  const appRouter = createRouter({
+    history: createWebHistory(),
+    routes
+  });
 
-router.beforeEach((to) => {
-  const needsAdminSession = to.path.startsWith("/admin");
-  const loggedIn = hasAdminSession();
+  appRouter.beforeEach((to) => {
+    const needsAdminSession = to.path.startsWith("/admin");
+    const loggedIn = hasAdminSession();
 
-  if (needsAdminSession && !loggedIn) {
-    return "/login";
-  }
+    if (needsAdminSession && !loggedIn) {
+      return "/login";
+    }
 
-  if (to.path === "/login" && loggedIn) {
-    return "/admin/dashboard";
-  }
+    if (to.path === "/login" && loggedIn) {
+      return "/admin/dashboard";
+    }
 
-  return true;
-});
+    return true;
+  });
+
+  return appRouter;
+}
+
+export const router = createAppRouter();

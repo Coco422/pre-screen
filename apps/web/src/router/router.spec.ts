@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { routes } from "./index";
+const mocks = vi.hoisted(() => ({
+  hasAdminSession: vi.fn()
+}));
+
+vi.mock("../stores/adminSession", () => ({
+  hasAdminSession: mocks.hasAdminSession
+}));
+
+import { createAppRouter, routes } from "./index";
 
 describe("router", () => {
+  beforeEach(() => {
+    mocks.hasAdminSession.mockReset();
+  });
+
   it("redirects the root route to login", () => {
     const rootRoute = routes.find((route) => route.path === "/");
 
@@ -33,5 +45,14 @@ describe("router", () => {
     expect(routes.some((route) => route.path === "/exam/:token/start")).toBe(true);
     expect(routes.some((route) => route.path === "/exam/:token/session")).toBe(true);
     expect(routes.some((route) => route.path === "/exam/:token/submitted")).toBe(true);
+  });
+
+  it("sends authenticated users from login to the new dashboard path", () => {
+    const router = createAppRouter();
+    mocks.hasAdminSession.mockReturnValue(true);
+
+    return router.push("/login").then(() => {
+      expect(router.currentRoute.value.fullPath).toBe("/admin/dashboard");
+    });
   });
 });

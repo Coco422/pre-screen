@@ -88,6 +88,9 @@ describe("AdminDashboardView", () => {
     expect(wrapper.text()).toContain("Ada");
     expect(wrapper.text()).toContain("Ben");
     expect(wrapper.text()).toContain("Cora");
+    expect(wrapper.text()).not.toContain("招聘初筛总览");
+    expect(wrapper.text()).not.toContain("先看筛选中候选人");
+    expect(wrapper.text()).not.toContain("按 PDF 上传时间优先处理更早进入系统的候选人");
   });
 
   it("shows an error banner when the dashboard api fails", async () => {

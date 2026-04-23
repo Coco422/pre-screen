@@ -1,14 +1,5 @@
 <template>
   <section class="dashboard-page">
-    <header class="dashboard-hero">
-      <div>
-        <p class="dashboard-hero__eyebrow">HR 工作台</p>
-        <h1>招聘初筛总览</h1>
-        <p class="dashboard-hero__copy">先看筛选中候选人，再推进待发卷，最后回收和复核已交卷结果。</p>
-      </div>
-      <RouterLink class="dashboard-hero__cta" :to="{ name: 'admin-candidates', query: { status: '待审核' } }">进入候选人列表</RouterLink>
-    </header>
-
     <div v-if="loading" class="dashboard-state-card">正在同步工作台数据...</div>
     <div v-else-if="loadError" class="dashboard-error-banner" role="alert">
       <strong>工作台数据加载失败</strong>
@@ -26,10 +17,7 @@
       <section class="dashboard-grid">
         <article class="dashboard-panel">
           <div class="dashboard-panel__head">
-            <div>
-              <h2>筛选中候选人</h2>
-              <p>按 PDF 上传时间优先处理更早进入系统的候选人。</p>
-            </div>
+            <h2>筛选中候选人</h2>
             <RouterLink :to="{ name: 'admin-candidates', query: { status: '待审核' } }">查看全部</RouterLink>
           </div>
 
@@ -47,10 +35,7 @@
 
         <article class="dashboard-panel">
           <div class="dashboard-panel__head">
-            <div>
-              <h2>待发卷候选人</h2>
-              <p>优先推进已经完成画像整理的候选人。</p>
-            </div>
+            <h2>待发卷候选人</h2>
             <RouterLink :to="{ name: 'admin-candidates', query: { status: '待发卷' } }">查看全部</RouterLink>
           </div>
 
@@ -68,10 +53,7 @@
 
         <article class="dashboard-panel">
           <div class="dashboard-panel__head">
-            <div>
-              <h2>已交卷</h2>
-              <p>按提交时间倒序展示，便于快速进入结果复核。</p>
-            </div>
+            <h2>已交卷</h2>
             <RouterLink :to="{ name: 'admin-results' }">查看全部</RouterLink>
           </div>
 
@@ -162,53 +144,6 @@ onMounted(async () => {
   gap: 18px;
 }
 
-.dashboard-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 24px;
-  border: 1px solid #d7e4f4;
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(238, 246, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 58%),
-    linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
-  box-shadow: 0 14px 32px rgba(23, 42, 76, 0.06);
-}
-
-.dashboard-hero__eyebrow {
-  margin: 0 0 8px;
-  color: #5d77a6;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.dashboard-hero h1 {
-  margin: 0;
-  color: #15253d;
-  font-size: 32px;
-  letter-spacing: -0.04em;
-}
-
-.dashboard-hero__copy {
-  margin: 10px 0 0;
-  color: #5e6d85;
-  line-height: 1.7;
-}
-
-.dashboard-hero__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #3f88ff 0%, #2a6cf0 100%);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(47, 108, 246, 0.18);
-}
-
 .dashboard-state-card,
 .dashboard-error-banner,
 .dashboard-panel,
@@ -280,12 +215,6 @@ onMounted(async () => {
   font-size: 18px;
 }
 
-.dashboard-panel__head p {
-  margin: 8px 0 0;
-  color: #60718f;
-  line-height: 1.6;
-}
-
 .dashboard-panel__head a {
   color: #2a6cf0;
   white-space: nowrap;
@@ -339,7 +268,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 720px) {
-  .dashboard-hero,
   .dashboard-panel__head,
   .dashboard-list__item {
     flex-direction: column;

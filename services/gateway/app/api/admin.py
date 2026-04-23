@@ -82,6 +82,11 @@ async def current_user(authorization: Annotated[str | None, Header()] = None) ->
         raise _translate_store_error(exc) from exc
 
 
+@router.get("/dashboard")
+async def get_dashboard() -> dict:
+    return gateway_demo_store.get_dashboard()
+
+
 @router.get("/tasks")
 async def list_tasks(status: str | None = None, keyword: str | None = None) -> dict:
     return gateway_demo_store.list_tasks(status=status, keyword=keyword)

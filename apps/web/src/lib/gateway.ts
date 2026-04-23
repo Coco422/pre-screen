@@ -7,6 +7,40 @@ export type AdminSession = {
   role: string;
 };
 
+export type DashboardCandidate = {
+  candidateId: string;
+  name: string;
+  role: string;
+  status: string;
+  resumeUploadedAt?: string;
+  profileCompletedAt?: string;
+  target: string;
+};
+
+export type DashboardResult = {
+  resultId: string;
+  candidateId: string;
+  candidateName: string;
+  role: string;
+  status: string;
+  submittedAt: string;
+  totalScore: number;
+  target: string;
+};
+
+export type AdminDashboard = {
+  metrics: {
+    screeningCandidateCount: number;
+    pendingPublishCount: number;
+    examInProgressCount: number;
+    submittedCount: number;
+    screeningCompletedCount: number;
+  };
+  screeningCandidates: DashboardCandidate[];
+  pendingPublishCandidates: DashboardCandidate[];
+  submittedResults: DashboardResult[];
+};
+
 export type ScreeningTaskSummary = {
   id: string;
   title: string;
@@ -409,6 +443,80 @@ export async function fetchAdminSession(): Promise<AdminSession> {
     sessionToken: response.session_token ?? response.token ?? fallbackSession.sessionToken,
     userName: response.user_name ?? response.display_name ?? response.username ?? fallbackSession.userName,
     role: response.role ?? fallbackSession.role
+  };
+}
+
+export async function loadDashboard(): Promise<AdminDashboard> {
+  const response = await requestJson<{
+    metrics: {
+      screening_candidate_count: number;
+      pending_publish_count: number;
+      exam_in_progress_count: number;
+      submitted_count: number;
+      screening_completed_count: number;
+    };
+    screening_candidates: Array<{
+      candidate_id: string;
+      name: string;
+      role: string;
+      status: string;
+      resume_uploaded_at?: string;
+      target: string;
+    }>;
+    pending_publish_candidates: Array<{
+      candidate_id: string;
+      name: string;
+      role: string;
+      status: string;
+      profile_completed_at?: string;
+      target: string;
+    }>;
+    submitted_results: Array<{
+      result_id: string;
+      candidate_id: string;
+      candidate_name: string;
+      role: string;
+      status: string;
+      submitted_at: string;
+      total_score: number;
+      target: string;
+    }>;
+  }>("/admin/dashboard");
+
+  return {
+    metrics: {
+      screeningCandidateCount: response.metrics.screening_candidate_count,
+      pendingPublishCount: response.metrics.pending_publish_count,
+      examInProgressCount: response.metrics.exam_in_progress_count,
+      submittedCount: response.metrics.submitted_count,
+      screeningCompletedCount: response.metrics.screening_completed_count
+    },
+    screeningCandidates: response.screening_candidates.map((item) => ({
+      candidateId: item.candidate_id,
+      name: item.name,
+      role: item.role,
+      status: item.status,
+      resumeUploadedAt: item.resume_uploaded_at,
+      target: item.target
+    })),
+    pendingPublishCandidates: response.pending_publish_candidates.map((item) => ({
+      candidateId: item.candidate_id,
+      name: item.name,
+      role: item.role,
+      status: item.status,
+      profileCompletedAt: item.profile_completed_at,
+      target: item.target
+    })),
+    submittedResults: response.submitted_results.map((item) => ({
+      resultId: item.result_id,
+      candidateId: item.candidate_id,
+      candidateName: item.candidate_name,
+      role: item.role,
+      status: item.status,
+      submittedAt: item.submitted_at,
+      totalScore: item.total_score,
+      target: item.target
+    }))
   };
 }
 

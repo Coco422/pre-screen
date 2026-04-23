@@ -56,6 +56,29 @@ def test_gateway_admin_candidates_endpoint_returns_items():
     assert response.json()["items"]
 
 
+def test_gateway_dashboard_endpoint_returns_metrics_and_priority_lists():
+    client = TestClient(app)
+
+    response = client.get("/admin/dashboard")
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["metrics"] == {
+        "screening_candidate_count": 1,
+        "pending_publish_count": 1,
+        "exam_in_progress_count": 1,
+        "submitted_count": 1,
+        "screening_completed_count": 1,
+    }
+
+    assert [item["candidate_id"] for item in payload["screening_candidates"]] == ["c-002"]
+    assert payload["screening_candidates"][0]["status"] == "待审核"
+    assert payload["pending_publish_candidates"][0]["candidate_id"] == "c-001"
+    assert payload["submitted_results"][0]["candidate_id"] == "c-004"
+    assert payload["submitted_results"][0]["status"] == "已交卷"
+
+
 def test_gateway_public_exam_endpoint_returns_exam_shell_payload():
     client = TestClient(app)
 

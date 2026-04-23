@@ -235,16 +235,17 @@ class GatewayDemoStore:
             self.results: dict[str, dict[str, Any]] = {}
             self._counters = {
                 "task": 2,
-                "upload": 1,
-                "candidate": 4,
-                "paper": 2,
-                "session": 2,
-                "result": 1,
+                "upload": 6,
+                "candidate": 6,
+                "paper": 3,
+                "session": 3,
+                "result": 2,
             }
             self._seed_demo_data()
 
     def _seed_demo_data(self) -> None:
         now = _utcnow()
+        task_created_at = now - timedelta(days=2)
         task_id = "t-001"
         self.tasks[task_id] = {
             "task_id": task_id,
@@ -261,7 +262,133 @@ class GatewayDemoStore:
             },
             "duration_minutes": 90,
             "status": "open",
-            "created_at": now,
+            "created_at": task_created_at,
+        }
+
+        upload_1_created_at = now - timedelta(hours=6)
+        upload_2_created_at = now - timedelta(hours=5)
+        upload_3_created_at = now - timedelta(hours=4)
+        upload_4_created_at = now - timedelta(hours=3)
+        upload_5_created_at = now - timedelta(hours=2)
+
+        self.uploads["u-001"] = {
+            "upload_id": "u-001",
+            "task_id": task_id,
+            "candidate_id": "c-001",
+            "filename": "guo-zixian.pdf",
+            "status": "parsed",
+            "progress": 100,
+            "created_at": upload_2_created_at,
+            "updated_at": upload_2_created_at + timedelta(minutes=18),
+            "error": None,
+            "pdf_path": "",
+            "processing": _build_processing(
+                stage="profile_ready",
+                status="succeeded",
+                progress=100,
+                message="简历解析完成，可直接生成考卷草稿。",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                },
+            ),
+        }
+        self.uploads["u-002"] = {
+            "upload_id": "u-002",
+            "task_id": task_id,
+            "candidate_id": "c-002",
+            "filename": "liang-chengyu.pdf",
+            "status": "parsed",
+            "progress": 100,
+            "created_at": upload_1_created_at,
+            "updated_at": upload_1_created_at + timedelta(minutes=26),
+            "error": None,
+            "pdf_path": "",
+            "processing": _build_processing(
+                stage="profile_ready",
+                status="succeeded",
+                progress=100,
+                message="文本与多模态信息已整理完毕，等待 HR 复核项目真实性。",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                },
+            ),
+        }
+        self.uploads["u-003"] = {
+            "upload_id": "u-003",
+            "task_id": task_id,
+            "candidate_id": "c-003",
+            "filename": "shen-haotian.pdf",
+            "status": "parsed",
+            "progress": 100,
+            "created_at": upload_3_created_at,
+            "updated_at": upload_3_created_at + timedelta(minutes=14),
+            "error": None,
+            "pdf_path": "",
+            "processing": _build_processing(
+                stage="published",
+                status="succeeded",
+                progress=100,
+                message="候选人已进入考试，系统正在持续记录作答状态。",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                    "paper_generate": "succeeded",
+                    "paper_publish": "succeeded",
+                },
+            ),
+        }
+        self.uploads["u-004"] = {
+            "upload_id": "u-004",
+            "task_id": task_id,
+            "candidate_id": "c-004",
+            "filename": "lin-qiufan.pdf",
+            "status": "parsed",
+            "progress": 100,
+            "created_at": upload_4_created_at,
+            "updated_at": upload_4_created_at + timedelta(minutes=20),
+            "error": None,
+            "pdf_path": "",
+            "processing": _build_processing(
+                stage="published",
+                status="succeeded",
+                progress=100,
+                message="答卷已回收，等待 HR 进入结果中心复核。",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                    "paper_generate": "succeeded",
+                    "paper_publish": "succeeded",
+                },
+            ),
+        }
+        self.uploads["u-005"] = {
+            "upload_id": "u-005",
+            "task_id": task_id,
+            "candidate_id": "c-005",
+            "filename": "zhou-yinan.pdf",
+            "status": "parsed",
+            "progress": 100,
+            "created_at": upload_5_created_at,
+            "updated_at": upload_5_created_at + timedelta(minutes=12),
+            "error": None,
+            "pdf_path": "",
+            "processing": _build_processing(
+                stage="profile_ready",
+                status="succeeded",
+                progress=100,
+                message="筛选已完成，候选人资料已进入归档视图。",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                },
+            ),
         }
 
         self.candidates["c-001"] = {
@@ -286,8 +413,8 @@ class GatewayDemoStore:
                 "基础信息字段完整，暂无人工修正。",
             ],
             "paper_ids": ["p-001"],
-            "latest_upload_id": None,
-            "created_at": now,
+            "latest_upload_id": "u-001",
+            "created_at": upload_2_created_at,
         }
         self.candidates["c-002"] = {
             "candidate_id": "c-002",
@@ -306,10 +433,10 @@ class GatewayDemoStore:
                 "multimodal_pages": 2,
                 "confidence": "中",
             },
-            "review_notes": ["第二页低文本覆盖，待人工复核。"],
+            "review_notes": ["第二页低文本覆盖，待人工复核。", "项目中多次出现性能提升描述，待核实真实佐证。"],
             "paper_ids": [],
-            "latest_upload_id": None,
-            "created_at": now,
+            "latest_upload_id": "u-002",
+            "created_at": upload_1_created_at,
         }
         self.candidates["c-003"] = {
             "candidate_id": "c-003",
@@ -330,8 +457,52 @@ class GatewayDemoStore:
             },
             "review_notes": ["考试会话已启动。"],
             "paper_ids": ["p-001"],
-            "latest_upload_id": None,
-            "created_at": now,
+            "latest_upload_id": "u-003",
+            "created_at": upload_3_created_at,
+        }
+        self.candidates["c-004"] = {
+            "candidate_id": "c-004",
+            "task_id": task_id,
+            "name": "林秋帆",
+            "role": "前端开发工程师",
+            "email": "lin.qiufan@example.com",
+            "city": "上海",
+            "status": "已交卷",
+            "quality": "高",
+            "summary": "候选人已交卷，等待 HR 进入结果中心确认主观题与代码题得分。",
+            "skills": ["Vue", "TypeScript", "Node.js"],
+            "project_summary": "做过后台中台和在线答题系统，表达清晰，适合优先复核结果。",
+            "parse_metrics": {
+                "first_page_characters": 1580,
+                "multimodal_pages": 0,
+                "confidence": "高",
+            },
+            "review_notes": ["答卷已回收，待复核。"],
+            "paper_ids": ["p-002"],
+            "latest_upload_id": "u-004",
+            "created_at": upload_4_created_at,
+        }
+        self.candidates["c-005"] = {
+            "candidate_id": "c-005",
+            "task_id": task_id,
+            "name": "周以南",
+            "role": "前端开发工程师",
+            "email": "zhou.yinan@example.com",
+            "city": "杭州",
+            "status": "已完成筛选",
+            "quality": "高",
+            "summary": "筛选流程已完成，候选人资料已整理归档，可供后续面试参考。",
+            "skills": ["React", "TypeScript", "工程化"],
+            "project_summary": "项目材料完整，技术栈与岗位匹配度较高，已通过首轮筛选。",
+            "parse_metrics": {
+                "first_page_characters": 1660,
+                "multimodal_pages": 0,
+                "confidence": "高",
+            },
+            "review_notes": ["已完成筛选，进入归档。"],
+            "paper_ids": [],
+            "latest_upload_id": "u-005",
+            "created_at": upload_5_created_at,
         }
 
         demo_questions = [
@@ -389,6 +560,18 @@ class GatewayDemoStore:
             "created_at": now,
             "updated_at": now,
         }
+        self.papers["p-002"] = {
+            "paper_id": "p-002",
+            "candidate_id": "c-004",
+            "task_id": task_id,
+            "title": "前端开发工程师在线测评",
+            "mix": {"base_info": 1, "objective": 4, "subjective": 2, "coding": 1},
+            "questions": deepcopy(demo_questions),
+            "status": "published",
+            "duration_minutes": 90,
+            "created_at": upload_4_created_at + timedelta(minutes=40),
+            "updated_at": upload_4_created_at + timedelta(hours=1),
+        }
         session_id = "s-001"
         self.exam_tokens["token-demo"] = {
             "token": "token-demo",
@@ -400,6 +583,18 @@ class GatewayDemoStore:
             "access_state": "in_progress",
             "created_at": now,
             "session_id": session_id,
+        }
+        self.exam_tokens["token-submitted"] = {
+            "token": "token-submitted",
+            "paper_id": "p-002",
+            "candidate_id": "c-004",
+            "task_id": task_id,
+            "verification_code": "654321",
+            "verification_code_hash": sha256("654321".encode("utf-8")).hexdigest(),
+            "duration_minutes": 90,
+            "access_state": "submitted",
+            "created_at": upload_4_created_at + timedelta(hours=1),
+            "session_id": "s-002",
         }
         self.sessions[session_id] = {
             "session_id": session_id,
@@ -415,6 +610,52 @@ class GatewayDemoStore:
             "answers": {},
             "risk_events": [],
             "result_id": None,
+        }
+        self.sessions["s-002"] = {
+            "session_id": "s-002",
+            "token": "token-submitted",
+            "paper_id": "p-002",
+            "candidate_id": "c-004",
+            "task_id": task_id,
+            "status": "completed",
+            "started_at": upload_4_created_at + timedelta(hours=1),
+            "expires_at": upload_4_created_at + timedelta(hours=2, minutes=30),
+            "submitted_at": upload_4_created_at + timedelta(hours=2, minutes=5),
+            "last_heartbeat_at": upload_4_created_at + timedelta(hours=2),
+            "answers": {},
+            "risk_events": [
+                {"event_type": "copy", "payload": {"question_id": "q-code-1"}, "created_at": upload_4_created_at + timedelta(hours=1, minutes=30)}
+            ],
+            "result_id": "r-001",
+        }
+        self.results["r-001"] = {
+            "result_id": "r-001",
+            "session_id": "s-002",
+            "token": "token-submitted",
+            "paper_id": "p-002",
+            "candidate_id": "c-004",
+            "task_id": task_id,
+            "status": "completed",
+            "submitted_at": upload_4_created_at + timedelta(hours=2, minutes=5),
+            "summary": {
+                "objective_score": 24,
+                "subjective_score": 26,
+                "coding_score": 32,
+                "total_score": 82,
+                "risk_summary": {"event_count": 1, "event_types": {"copy": 1}},
+            },
+            "question_reviews": [
+                {
+                    "question_id": "q-obj-1",
+                    "kind": "objective",
+                    "title": "Vue 响应式原理基础",
+                    "max_score": 5,
+                    "draft_answer": {"answer": "Proxy 劫持并按依赖触发更新"},
+                    "score": 5,
+                    "result": "passed",
+                }
+            ],
+            "risk_events": deepcopy(self.sessions["s-002"]["risk_events"]),
         }
 
     def _next_id(self, kind: str) -> str:
@@ -441,6 +682,80 @@ class GatewayDemoStore:
         if user is None:
             raise PermissionError("Admin session is invalid.")
         return deepcopy(user)
+
+    def get_dashboard(self) -> dict[str, Any]:
+        screening_statuses = {"待审核", "解析中", "信息提取中", "信息整理中"}
+        exam_in_progress_statuses = {"已开考", "进行中考试"}
+        screening_completed_statuses = {"已完成筛选", "已归档"}
+
+        screening_candidates = []
+        pending_publish_candidates = []
+
+        for candidate in self.candidates.values():
+            resume_uploaded_at = self._get_candidate_resume_uploaded_at(candidate)
+            profile_completed_at = self._get_candidate_profile_completed_at(candidate)
+
+            if candidate["status"] in screening_statuses:
+                screening_candidates.append(
+                    {
+                        "candidate_id": candidate["candidate_id"],
+                        "name": candidate["name"],
+                        "role": candidate["role"],
+                        "status": candidate["status"],
+                        "resume_uploaded_at": _isoformat(resume_uploaded_at),
+                        "target": f"/admin/candidates/{candidate['candidate_id']}",
+                    }
+                )
+
+            if candidate["status"] == "待发卷":
+                pending_publish_candidates.append(
+                    {
+                        "candidate_id": candidate["candidate_id"],
+                        "name": candidate["name"],
+                        "role": candidate["role"],
+                        "status": candidate["status"],
+                        "profile_completed_at": _isoformat(profile_completed_at),
+                        "target": f"/admin/papers/{candidate['paper_ids'][-1]}?candidateId={candidate['candidate_id']}"
+                        if candidate.get("paper_ids")
+                        else f"/admin/candidates/{candidate['candidate_id']}",
+                    }
+                )
+
+        screening_candidates.sort(key=lambda item: item["resume_uploaded_at"] or "")
+        pending_publish_candidates.sort(key=lambda item: item["profile_completed_at"] or "")
+
+        submitted_results = [
+            {
+                "result_id": item["result_id"],
+                "candidate_id": item["candidate_id"],
+                "candidate_name": item["candidate_name"],
+                "role": item["role"],
+                "status": "已交卷",
+                "submitted_at": item["submitted_at"],
+                "total_score": item["total_score"],
+                "target": f"/admin/results/{item['result_id']}",
+            }
+            for item in self.list_results()["items"]
+        ]
+
+        return {
+            "metrics": {
+                "screening_candidate_count": len(screening_candidates),
+                "pending_publish_count": len(pending_publish_candidates),
+                "exam_in_progress_count": sum(
+                    1 for candidate in self.candidates.values() if candidate["status"] in exam_in_progress_statuses
+                ),
+                "submitted_count": len(submitted_results),
+                "screening_completed_count": sum(
+                    1
+                    for candidate in self.candidates.values()
+                    if candidate["status"] in screening_completed_statuses
+                ),
+            },
+            "screening_candidates": screening_candidates[:10],
+            "pending_publish_candidates": pending_publish_candidates[:10],
+            "submitted_results": submitted_results[:10],
+        }
 
     def list_tasks(self, *, status: str | None = None, keyword: str | None = None) -> dict[str, Any]:
         items = []
@@ -1265,6 +1580,16 @@ class GatewayDemoStore:
             "result_id": self._find_candidate_result_id(candidate["candidate_id"]),
             "processing": deepcopy(candidate.get("processing")),
         }
+
+    def _get_candidate_resume_uploaded_at(self, candidate: dict[str, Any]) -> datetime:
+        upload_id = candidate.get("latest_upload_id")
+        upload = self.uploads.get(upload_id) if upload_id else None
+        return upload["created_at"] if upload else candidate["created_at"]
+
+    def _get_candidate_profile_completed_at(self, candidate: dict[str, Any]) -> datetime:
+        upload_id = candidate.get("latest_upload_id")
+        upload = self.uploads.get(upload_id) if upload_id else None
+        return upload["updated_at"] if upload else candidate["created_at"]
 
     def _serialize_candidate_detail(self, candidate: dict[str, Any]) -> dict[str, Any]:
         if candidate["paper_ids"]:

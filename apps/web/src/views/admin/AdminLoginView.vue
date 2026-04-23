@@ -3,7 +3,7 @@
     <section class="login-screen__brand">
       <div class="login-screen__copy">
         <h1>Pre-Screen</h1>
-        <p>技术招聘智能筛选系统</p>
+        <p>招聘初筛控制台</p>
       </div>
 
       <div class="login-hero" aria-hidden="true">
@@ -17,7 +17,7 @@
     <section class="login-card">
       <header class="login-card__header">
         <h2>HR 登录</h2>
-        <p>进入招聘预筛控制台</p>
+        <p>进入工作台</p>
       </header>
 
       <form class="login-form" @submit.prevent="submit">
@@ -45,11 +45,6 @@
           />
         </label>
 
-        <div class="login-form__meta">
-          <el-checkbox v-model="rememberMe">记住账号</el-checkbox>
-          <button type="button" @click="handleForgotPassword">忘记密码?</button>
-        </div>
-
         <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false" />
 
         <el-button class="login-form__submit" type="primary" native-type="submit" :loading="submitting">
@@ -61,66 +56,17 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from "element-plus";
-import { onMounted, ref, watch } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 
 import { useAdminSessionStore } from "../../stores/adminSession";
 
-const STORAGE_KEY = "pre-screen:admin-login-username";
 const router = useRouter();
 const sessionStore = useAdminSessionStore();
 const username = ref("hr-demo");
 const password = ref("demo-pass");
-const rememberMe = ref(false);
 const submitting = ref(false);
 const errorMessage = ref("");
-const hydrated = ref(false);
-
-function readRememberedUsername() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.localStorage.getItem(STORAGE_KEY) ?? "";
-}
-
-function syncRememberedUsername() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const value = username.value.trim();
-  if (rememberMe.value && value) {
-    window.localStorage.setItem(STORAGE_KEY, value);
-    return;
-  }
-
-  window.localStorage.removeItem(STORAGE_KEY);
-}
-
-function handleForgotPassword() {
-  ElMessage.info("请联系管理员重置密码。");
-}
-
-onMounted(() => {
-  const rememberedUsername = readRememberedUsername();
-
-  if (rememberedUsername) {
-    username.value = rememberedUsername;
-    rememberMe.value = true;
-  }
-
-  hydrated.value = true;
-});
-
-watch([username, rememberMe], () => {
-  if (!hydrated.value) {
-    return;
-  }
-
-  syncRememberedUsername();
-}, { immediate: true });
 
 async function submit() {
   submitting.value = true;

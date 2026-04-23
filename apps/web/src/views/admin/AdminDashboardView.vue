@@ -1,66 +1,92 @@
 <template>
   <section class="dashboard-page">
+    <header class="dashboard-hero">
+      <div>
+        <p class="dashboard-hero__eyebrow">HR 工作台</p>
+        <h1>招聘初筛总览</h1>
+        <p class="dashboard-hero__copy">先看筛选中候选人，再推进待发卷，最后回收和复核已交卷结果。</p>
+      </div>
+      <RouterLink class="dashboard-hero__cta" :to="{ name: 'admin-candidates', query: { status: '待审核' } }">进入候选人列表</RouterLink>
+    </header>
+
     <div v-if="loading" class="dashboard-state-card">正在同步工作台数据...</div>
+    <div v-else-if="loadError" class="dashboard-error-banner" role="alert">
+      <strong>工作台数据加载失败</strong>
+      <span>{{ loadError }}</span>
+    </div>
 
     <template v-else>
-      <div v-if="loadError" class="dashboard-error-banner" role="alert">
-        <strong>工作台同步失败</strong>
-        <span>{{ loadError }}</span>
-      </div>
-
-      <div class="dashboard-metrics">
+      <section class="dashboard-metrics">
         <article v-for="metric in metrics" :key="metric.label" class="dashboard-metric">
-          <p>{{ metric.label }}</p>
+          <span>{{ metric.label }}</span>
           <strong>{{ metric.value }}</strong>
         </article>
-      </div>
+      </section>
 
-      <div class="dashboard-columns">
-        <section class="page-panel dashboard-region">
-          <div class="dashboard-region__head">
+      <section class="dashboard-grid">
+        <article class="dashboard-panel">
+          <div class="dashboard-panel__head">
             <div>
-              <h2>待处理候选人</h2>
+              <h2>筛选中候选人</h2>
+              <p>按 PDF 上传时间优先处理更早进入系统的候选人。</p>
             </div>
-            <RouterLink :to="{ name: 'admin-candidates' }">查看全部</RouterLink>
+            <RouterLink :to="{ name: 'admin-candidates', query: { status: '待审核' } }">查看全部</RouterLink>
           </div>
 
-          <el-table :data="priorityCandidates" stripe>
-            <el-table-column prop="name" label="姓名" />
-            <el-table-column prop="role" label="岗位" />
-            <el-table-column prop="status" label="状态" />
-          </el-table>
-        </section>
+          <div v-if="dashboard.screeningCandidates.length" class="dashboard-list">
+            <RouterLink v-for="item in dashboard.screeningCandidates" :key="item.candidateId" class="dashboard-list__item" :to="item.target">
+              <div>
+                <strong>{{ item.name }}</strong>
+                <p>{{ item.role }} · {{ item.status }}</p>
+              </div>
+              <span>{{ formatDateTime(item.resumeUploadedAt) }}</span>
+            </RouterLink>
+          </div>
+          <div v-else class="dashboard-empty">当前没有筛选中的候选人。</div>
+        </article>
 
-        <section class="page-panel dashboard-region">
-          <div class="dashboard-region__head">
+        <article class="dashboard-panel">
+          <div class="dashboard-panel__head">
             <div>
-              <h2>最近任务</h2>
+              <h2>待发卷候选人</h2>
+              <p>优先推进已经完成画像整理的候选人。</p>
             </div>
-            <RouterLink :to="{ name: 'admin-tasks' }">进入</RouterLink>
+            <RouterLink :to="{ name: 'admin-candidates', query: { status: '待发卷' } }">查看全部</RouterLink>
           </div>
 
-          <el-table :data="tasks" stripe>
-            <el-table-column prop="title" label="任务名称" />
-            <el-table-column prop="role" label="岗位" />
-            <el-table-column prop="status" label="状态" />
-          </el-table>
-        </section>
+          <div v-if="dashboard.pendingPublishCandidates.length" class="dashboard-list">
+            <RouterLink v-for="item in dashboard.pendingPublishCandidates" :key="item.candidateId" class="dashboard-list__item" :to="item.target">
+              <div>
+                <strong>{{ item.name }}</strong>
+                <p>{{ item.role }} · {{ item.status }}</p>
+              </div>
+              <span>{{ formatDateTime(item.profileCompletedAt) }}</span>
+            </RouterLink>
+          </div>
+          <div v-else class="dashboard-empty">当前没有待发卷候选人。</div>
+        </article>
 
-        <section class="page-panel dashboard-region">
-          <div class="dashboard-region__head">
+        <article class="dashboard-panel">
+          <div class="dashboard-panel__head">
             <div>
-              <h2>最新结果</h2>
+              <h2>已交卷</h2>
+              <p>按提交时间倒序展示，便于快速进入结果复核。</p>
             </div>
-            <RouterLink :to="{ name: 'admin-results' }">结果中心</RouterLink>
+            <RouterLink :to="{ name: 'admin-results' }">查看全部</RouterLink>
           </div>
 
-          <el-table :data="results" stripe>
-            <el-table-column prop="candidateName" label="姓名" />
-            <el-table-column prop="role" label="岗位" />
-            <el-table-column prop="totalScore" label="总分" />
-          </el-table>
-        </section>
-      </div>
+          <div v-if="dashboard.submittedResults.length" class="dashboard-list">
+            <RouterLink v-for="item in dashboard.submittedResults" :key="item.resultId" class="dashboard-list__item" :to="item.target">
+              <div>
+                <strong>{{ item.candidateName }}</strong>
+                <p>{{ item.role }} · {{ item.status }}</p>
+              </div>
+              <span>{{ item.totalScore }} 分 · {{ formatDateTime(item.submittedAt) }}</span>
+            </RouterLink>
+          </div>
+          <div v-else class="dashboard-empty">当前还没有已交卷结果。</div>
+        </article>
+      </section>
     </template>
   </section>
 </template>
@@ -69,52 +95,259 @@
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 
-import { loadCandidates, loadResults, loadTasks, type CandidateCard, type ResultSummary, type ScreeningTaskSummary } from "../../lib/gateway";
+import { loadDashboard, type AdminDashboard } from "../../lib/gateway";
 
-const actionableStatusSet = new Set(["待审核", "待发卷", "已发卷"]);
 const loading = ref(true);
 const loadError = ref("");
-const tasks = ref<ScreeningTaskSummary[]>([]);
-const candidates = ref<CandidateCard[]>([]);
-const results = ref<ResultSummary[]>([]);
-
-const actionableCandidates = computed(() => candidates.value.filter((candidate) => actionableStatusSet.has(candidate.status)));
-const priorityCandidates = computed(() => actionableCandidates.value.slice(0, 5));
+const dashboard = ref<AdminDashboard>({
+  metrics: {
+    screeningCandidateCount: 0,
+    pendingPublishCount: 0,
+    examInProgressCount: 0,
+    submittedCount: 0,
+    screeningCompletedCount: 0
+  },
+  screeningCandidates: [],
+  pendingPublishCandidates: [],
+  submittedResults: []
+});
 
 const metrics = computed(() => [
-  { label: "待处理候选人", value: String(actionableCandidates.value.length) },
-  { label: "待发卷人数", value: String(candidates.value.filter((item) => item.status === "待发卷").length) },
-  { label: "进行中考试", value: String(candidates.value.filter((item) => item.status === "已开考").length) },
-  { label: "已完成作答", value: String(results.value.length) },
-  { label: "异常事件", value: String(candidates.value.filter((item) => item.processing?.status === "error").length) }
+  { label: "筛选中候选人", value: String(dashboard.value.metrics.screeningCandidateCount) },
+  { label: "待发卷人数", value: String(dashboard.value.metrics.pendingPublishCount) },
+  { label: "进行中考试", value: String(dashboard.value.metrics.examInProgressCount) },
+  { label: "已交卷", value: String(dashboard.value.metrics.submittedCount) },
+  { label: "已完成筛选", value: String(dashboard.value.metrics.screeningCompletedCount) }
 ]);
+
+function formatDateTime(value?: string) {
+  if (!value) {
+    return "时间待补齐";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+
+  const getPart = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${getPart("month")}-${getPart("day")} ${getPart("hour")}:${getPart("minute")}`;
+}
 
 onMounted(async () => {
   loading.value = true;
   loadError.value = "";
 
-  const [taskItems, candidateItems, resultItems] = await Promise.allSettled([loadTasks(), loadCandidates(), loadResults()]);
-  const failedSections: string[] = [];
-
-  if (taskItems.status === "fulfilled") {
-    tasks.value = taskItems.value;
-  } else {
-    failedSections.push("任务");
+  try {
+    dashboard.value = await loadDashboard();
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : "请稍后重试。";
   }
-
-  if (candidateItems.status === "fulfilled") {
-    candidates.value = candidateItems.value;
-  } else {
-    failedSections.push("候选人");
-  }
-
-  if (resultItems.status === "fulfilled") {
-    results.value = resultItems.value;
-  } else {
-    failedSections.push("结果");
-  }
-
-  loadError.value = failedSections.length ? `${failedSections.join("、")}数据加载失败，已显示可用内容。` : "";
   loading.value = false;
 });
 </script>
+
+<style scoped>
+.dashboard-page {
+  display: grid;
+  gap: 18px;
+}
+
+.dashboard-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #d7e4f4;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(238, 246, 255, 0.96) 0%, rgba(255, 255, 255, 0.98) 58%),
+    linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
+  box-shadow: 0 14px 32px rgba(23, 42, 76, 0.06);
+}
+
+.dashboard-hero__eyebrow {
+  margin: 0 0 8px;
+  color: #5d77a6;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.dashboard-hero h1 {
+  margin: 0;
+  color: #15253d;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+
+.dashboard-hero__copy {
+  margin: 10px 0 0;
+  color: #5e6d85;
+  line-height: 1.7;
+}
+
+.dashboard-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3f88ff 0%, #2a6cf0 100%);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(47, 108, 246, 0.18);
+}
+
+.dashboard-state-card,
+.dashboard-error-banner,
+.dashboard-panel,
+.dashboard-metric {
+  border: 1px solid #d7e4f4;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(23, 42, 76, 0.05);
+}
+
+.dashboard-state-card,
+.dashboard-error-banner {
+  padding: 18px 20px;
+}
+
+.dashboard-error-banner {
+  display: grid;
+  gap: 6px;
+  color: #8a2430;
+  border-color: #f1c7cc;
+  background: #fff8f8;
+}
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dashboard-metric {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.dashboard-metric span {
+  color: #5f7090;
+  font-size: 13px;
+}
+
+.dashboard-metric strong {
+  color: #13243c;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dashboard-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.dashboard-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-panel__head h2 {
+  margin: 0;
+  color: #15253d;
+  font-size: 18px;
+}
+
+.dashboard-panel__head p {
+  margin: 8px 0 0;
+  color: #60718f;
+  line-height: 1.6;
+}
+
+.dashboard-panel__head a {
+  color: #2a6cf0;
+  white-space: nowrap;
+}
+
+.dashboard-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e1ebf7;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.dashboard-list__item strong {
+  color: #16263d;
+}
+
+.dashboard-list__item p,
+.dashboard-list__item span {
+  margin: 6px 0 0;
+  color: #62728d;
+  font-size: 13px;
+}
+
+.dashboard-list__item span {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dashboard-empty {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #63738f;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-metrics,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-hero,
+  .dashboard-panel__head,
+  .dashboard-list__item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-list__item span {
+    text-align: left;
+  }
+}
+</style>

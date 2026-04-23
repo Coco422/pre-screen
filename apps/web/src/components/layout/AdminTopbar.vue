@@ -1,13 +1,12 @@
 <template>
   <header class="admin-topbar">
     <div>
-      <p class="admin-topbar__eyebrow">Pre-Screen Console</p>
       <h1 class="admin-topbar__title">{{ title }}</h1>
     </div>
 
     <div class="admin-topbar__actions">
       <el-badge :value="1" class="admin-topbar__badge">
-        <el-button circle aria-label="通知">
+        <el-button aria-label="通知">
           <el-icon><Bell /></el-icon>
         </el-button>
       </el-badge>

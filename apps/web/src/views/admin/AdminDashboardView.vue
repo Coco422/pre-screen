@@ -20,7 +20,6 @@
           <div class="dashboard-region__head">
             <div>
               <h2>待处理候选人</h2>
-              <p>优先展示最需要推进的候选人。</p>
             </div>
             <RouterLink :to="{ name: 'admin-candidates' }">查看全部</RouterLink>
           </div>
@@ -36,7 +35,6 @@
           <div class="dashboard-region__head">
             <div>
               <h2>最近任务</h2>
-              <p>按岗位维度查看筛选推进情况。</p>
             </div>
             <RouterLink :to="{ name: 'admin-tasks' }">进入</RouterLink>
           </div>
@@ -52,7 +50,6 @@
           <div class="dashboard-region__head">
             <div>
               <h2>最新结果</h2>
-              <p>最近完成作答的候选人结果。</p>
             </div>
             <RouterLink :to="{ name: 'admin-results' }">结果中心</RouterLink>
           </div>

@@ -1,6 +1,6 @@
 <template>
   <Transition name="processing-banner">
-    <RouterLink v-if="snapshot" class="glass-card processing-banner" :to="snapshot.detailHref">
+    <RouterLink v-if="snapshot" class="processing-banner" :to="snapshot.detailHref">
       <div class="processing-banner__signal" aria-hidden="true">
         <span class="processing-banner__dot"></span>
       </div>
@@ -93,40 +93,41 @@ onBeforeUnmount(() => {
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 18px;
+  gap: 12px;
   align-items: center;
-  padding: 16px 20px;
+  padding: 10px 14px;
   overflow: hidden;
-  border-color: rgba(15, 118, 110, 0.16);
+  border: 1px solid #d9e3ef;
+  border-radius: 12px;
   background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.12), rgba(255, 255, 255, 0)) 0 0 / 220px 100% no-repeat,
-    rgba(255, 255, 255, 0.82);
+    linear-gradient(90deg, rgba(47, 108, 246, 0.08), rgba(255, 255, 255, 0)) 0 0 / 180px 100% no-repeat,
+    #ffffff;
 }
 
 .processing-banner::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 10%, rgba(20, 184, 166, 0.14) 40%, transparent 70%);
+  background: linear-gradient(120deg, transparent 10%, rgba(106, 152, 255, 0.08) 40%, transparent 70%);
   transform: translateX(-100%);
-  animation: processing-banner-sweep 3.8s ease-in-out infinite;
+  animation: processing-banner-sweep 4.4s ease-in-out infinite;
   pointer-events: none;
 }
 
 .processing-banner__signal {
   position: relative;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
-  background: rgba(15, 118, 110, 0.16);
-  box-shadow: 0 0 0 8px rgba(15, 118, 110, 0.08);
+  background: rgba(47, 108, 246, 0.14);
+  box-shadow: 0 0 0 6px rgba(47, 108, 246, 0.08);
 }
 
 .processing-banner__dot {
   position: absolute;
   inset: 2px;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--accent) 0%, #2dd4bf 100%);
+  background: linear-gradient(180deg, var(--accent) 0%, #6e9cff 100%);
   animation: processing-banner-pulse 1.6s ease-in-out infinite;
 }
 
@@ -141,9 +142,9 @@ onBeforeUnmount(() => {
 }
 
 .processing-banner__eyebrow {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-strong);
 }
@@ -158,8 +159,8 @@ onBeforeUnmount(() => {
 
 .processing-banner__title {
   min-width: 0;
-  font-size: 1rem;
-  line-height: 1.4;
+  font-size: 0.92rem;
+  line-height: 1.3;
   color: var(--ink-strong);
 }
 
@@ -168,9 +169,9 @@ onBeforeUnmount(() => {
 .processing-banner__action {
   display: inline-flex;
   align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 0.82rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
@@ -187,7 +188,7 @@ onBeforeUnmount(() => {
 }
 
 .processing-banner__action {
-  background: rgba(15, 118, 110, 0.12);
+  background: rgba(47, 108, 246, 0.1);
   color: var(--accent-strong);
 }
 

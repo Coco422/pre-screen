@@ -130,8 +130,30 @@ async def get_upload(upload_id: str) -> dict:
 
 
 @router.get("/candidates")
-async def list_candidates(task_id: str | None = None, status: str | None = None) -> dict:
-    return gateway_demo_store.list_candidates(task_id=task_id, status=status)
+async def list_candidates(
+    task_id: str | None = None,
+    role: str | None = None,
+    status: str | None = None,
+    pending_review: bool | None = None,
+    paper_sent: bool | None = None,
+    paper_status: str | None = None,
+    risk_level: str | None = None,
+    keyword: str | None = None,
+    sort_by: str | None = None,
+    order: str | None = None,
+) -> dict:
+    return gateway_demo_store.list_candidates(
+        task_id=task_id,
+        role=role,
+        status=status,
+        pending_review=pending_review,
+        paper_sent=paper_sent,
+        paper_status=paper_status,
+        risk_level=risk_level,
+        keyword=keyword,
+        sort_by=sort_by,
+        order=order,
+    )
 
 
 @router.get("/candidates/{candidate_id}")

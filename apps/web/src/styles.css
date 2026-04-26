@@ -218,18 +218,20 @@ select:disabled {
 
 .candidate-page {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+  min-width: 0;
 }
 
 .candidate-page__head {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .candidate-page__filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 320px);
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(132px, 1fr)) minmax(220px, 1.4fr);
+  gap: 10px;
 }
 
 .candidate-page__filters .el-select,
@@ -238,11 +240,10 @@ select:disabled {
 }
 
 .candidate-page__state {
-  padding: 20px 22px;
-  border-radius: 22px;
+  padding: 14px 16px;
+  border-radius: 8px;
   background: var(--admin-panel-strong);
   border: 1px solid var(--admin-border);
-  box-shadow: var(--admin-shadow);
   color: var(--ink-soft);
 }
 
@@ -252,14 +253,26 @@ select:disabled {
 
 .candidate-page__table {
   width: 100%;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.candidate-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.candidate-page__action {
   color: var(--admin-accent-strong);
   font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+  .candidate-page__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .candidate-page__filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dashboard-page {

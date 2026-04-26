@@ -83,12 +83,38 @@ export type CandidateCard = {
   role: string;
   city: string;
   status: string;
+  screeningStatus: string;
   quality: string;
   summary: string;
   skills: string[];
+  resumeUploadedAt?: string | null;
+  resumeParseStatus: string;
+  riskFlag: string;
+  riskLevel: string;
+  riskCount: number;
+  paperSent: boolean;
+  paperStatus: string;
+  updatedAt?: string | null;
+  submittedAt?: string | null;
+  nextAction: {
+    label: string;
+    target: string;
+  };
   paperId?: string | null;
   resultId?: string | null;
   processing?: ProcessingStatus | null;
+};
+
+export type CandidateListFilters = {
+  taskId?: string;
+  role?: string;
+  status?: string;
+  pendingReview?: boolean;
+  paperSent?: boolean;
+  riskLevel?: string;
+  keyword?: string;
+  sortBy?: "resume_uploaded_at" | "updated_at" | "submitted_at";
+  order?: "asc" | "desc";
 };
 
 export type CandidateProject = {
@@ -717,9 +743,23 @@ function mapCandidateCard(item: {
   role: string;
   city: string;
   status: string;
+  screening_status?: string;
   quality: string;
   summary: string;
   skills: string[];
+  resume_uploaded_at?: string | null;
+  resume_parse_status?: string;
+  risk_flag?: string;
+  risk_level?: string;
+  risk_count?: number;
+  paper_sent?: boolean;
+  paper_status?: string;
+  updated_at?: string | null;
+  submitted_at?: string | null;
+  next_action?: {
+    label?: string;
+    target?: string;
+  };
   paper_id?: string | null;
   result_id?: string | null;
   processing?: {
@@ -738,17 +778,63 @@ function mapCandidateCard(item: {
     role: item.role,
     city: item.city,
     status: item.status,
+    screeningStatus: item.screening_status ?? item.status,
     quality: item.quality,
     summary: item.summary,
     skills: item.skills,
+    resumeUploadedAt: item.resume_uploaded_at,
+    resumeParseStatus: item.resume_parse_status ?? item.quality,
+    riskFlag: item.risk_flag ?? "无",
+    riskLevel: item.risk_level ?? "low",
+    riskCount: item.risk_count ?? 0,
+    paperSent: item.paper_sent ?? false,
+    paperStatus: item.paper_status ?? "none",
+    updatedAt: item.updated_at,
+    submittedAt: item.submitted_at,
+    nextAction: {
+      label: item.next_action?.label ?? "查看详情",
+      target: item.next_action?.target ?? `/admin/candidates/${item.id}`
+    },
     paperId: item.paper_id,
     resultId: item.result_id,
     processing: mapProcessingStatus(item.processing)
   };
 }
 
-export async function loadCandidates(taskId?: string): Promise<CandidateCard[]> {
-  const query = taskId ? `?task_id=${encodeURIComponent(taskId)}` : "";
+export async function loadCandidates(filters?: CandidateListFilters | string): Promise<CandidateCard[]> {
+  const normalizedFilters: CandidateListFilters =
+    typeof filters === "string" ? { taskId: filters } : filters ?? {};
+  const params = new URLSearchParams();
+
+  if (normalizedFilters.taskId) {
+    params.set("task_id", normalizedFilters.taskId);
+  }
+  if (normalizedFilters.role) {
+    params.set("role", normalizedFilters.role);
+  }
+  if (normalizedFilters.status) {
+    params.set("status", normalizedFilters.status);
+  }
+  if (normalizedFilters.pendingReview !== undefined) {
+    params.set("pending_review", String(normalizedFilters.pendingReview));
+  }
+  if (normalizedFilters.paperSent !== undefined) {
+    params.set("paper_sent", String(normalizedFilters.paperSent));
+  }
+  if (normalizedFilters.riskLevel) {
+    params.set("risk_level", normalizedFilters.riskLevel);
+  }
+  if (normalizedFilters.keyword) {
+    params.set("keyword", normalizedFilters.keyword);
+  }
+  if (normalizedFilters.sortBy) {
+    params.set("sort_by", normalizedFilters.sortBy);
+  }
+  if (normalizedFilters.order) {
+    params.set("order", normalizedFilters.order);
+  }
+
+  const query = params.size ? `?${params.toString()}` : "";
   const response = await requestJson<{ items: Array<{
     id: string;
     task_id: string;
@@ -756,9 +842,23 @@ export async function loadCandidates(taskId?: string): Promise<CandidateCard[]> 
     role: string;
     city: string;
     status: string;
+    screening_status?: string;
     quality: string;
     summary: string;
     skills: string[];
+    resume_uploaded_at?: string | null;
+    resume_parse_status?: string;
+    risk_flag?: string;
+    risk_level?: string;
+    risk_count?: number;
+    paper_sent?: boolean;
+    paper_status?: string;
+    updated_at?: string | null;
+    submitted_at?: string | null;
+    next_action?: {
+      label?: string;
+      target?: string;
+    };
     paper_id?: string | null;
     result_id?: string | null;
     processing?: {

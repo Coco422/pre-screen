@@ -1019,15 +1019,57 @@ class GatewayDemoStore:
             raise LookupError("Upload not found.")
         return self._serialize_upload(upload)
 
-    def list_candidates(self, *, task_id: str | None = None, status: str | None = None) -> dict[str, Any]:
+    def list_candidates(
+        self,
+        *,
+        task_id: str | None = None,
+        role: str | None = None,
+        status: str | None = None,
+        pending_review: bool | None = None,
+        paper_sent: bool | None = None,
+        paper_status: str | None = None,
+        risk_level: str | None = None,
+        keyword: str | None = None,
+        sort_by: str | None = None,
+        order: str | None = None,
+    ) -> dict[str, Any]:
         items = []
         for candidate in self.candidates.values():
             if task_id and candidate["task_id"] != task_id:
                 continue
+            if role and candidate["role"] != role:
+                continue
             if status and candidate["status"] != status:
                 continue
-            items.append(self._serialize_candidate_card(candidate))
-        items.sort(key=lambda item: item["id"])
+            if pending_review is not None and self._is_candidate_pending_review(candidate) != pending_review:
+                continue
+            if paper_sent is not None and self._is_candidate_paper_sent(candidate) != paper_sent:
+                continue
+            if paper_status and self._get_candidate_paper_status(candidate) != paper_status:
+                continue
+
+            item = self._serialize_candidate_card(candidate)
+            if risk_level and item["risk_level"] != risk_level:
+                continue
+            if keyword:
+                haystack = " ".join(
+                    [
+                        item["name"],
+                        item["role"],
+                        item["city"],
+                        item["status"],
+                        item["summary"],
+                        item["risk_flag"],
+                        " ".join(item["skills"]),
+                    ]
+                ).lower()
+                if keyword.lower() not in haystack:
+                    continue
+            items.append(item)
+
+        sort_key = sort_by if sort_by in {"resume_uploaded_at", "updated_at", "submitted_at"} else "id"
+        reverse = order == "desc"
+        items.sort(key=lambda item: item.get(sort_key) or item["id"], reverse=reverse)
         return {"items": items, "total": len(items)}
 
     def get_candidate(self, candidate_id: str) -> dict[str, Any]:
@@ -1566,6 +1608,11 @@ class GatewayDemoStore:
         }
 
     def _serialize_candidate_card(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        risk = self._build_candidate_risk(candidate)
+        next_action = self._build_candidate_next_action(candidate)
+        upload = self._get_candidate_upload(candidate)
+        paper_sent = self._is_candidate_paper_sent(candidate)
+
         return {
             "id": candidate["candidate_id"],
             "task_id": candidate["task_id"],
@@ -1573,23 +1620,94 @@ class GatewayDemoStore:
             "role": candidate["role"],
             "city": candidate["city"],
             "status": candidate["status"],
+            "screening_status": candidate["status"],
             "quality": candidate["quality"],
             "summary": candidate["summary"],
             "skills": deepcopy(candidate["skills"]),
+            "resume_uploaded_at": _isoformat(self._get_candidate_resume_uploaded_at(candidate)),
+            "resume_parse_status": upload["status"] if upload else "missing",
+            "risk_flag": risk["flag"],
+            "risk_level": risk["level"],
+            "risk_count": risk["count"],
+            "paper_sent": paper_sent,
+            "paper_status": self._get_candidate_paper_status(candidate),
+            "updated_at": _isoformat(self._get_candidate_updated_at(candidate)),
+            "submitted_at": _isoformat(self._get_candidate_submitted_at(candidate)),
+            "next_action": next_action,
             "paper_id": candidate["paper_ids"][-1] if candidate.get("paper_ids") else None,
             "result_id": self._find_candidate_result_id(candidate["candidate_id"]),
             "processing": deepcopy(candidate.get("processing")),
         }
 
-    def _get_candidate_resume_uploaded_at(self, candidate: dict[str, Any]) -> datetime:
+    def _get_candidate_upload(self, candidate: dict[str, Any]) -> dict[str, Any] | None:
         upload_id = candidate.get("latest_upload_id")
-        upload = self.uploads.get(upload_id) if upload_id else None
+        return self.uploads.get(upload_id) if upload_id else None
+
+    def _get_candidate_resume_uploaded_at(self, candidate: dict[str, Any]) -> datetime:
+        upload = self._get_candidate_upload(candidate)
         return upload["created_at"] if upload else candidate["created_at"]
 
     def _get_candidate_profile_completed_at(self, candidate: dict[str, Any]) -> datetime:
-        upload_id = candidate.get("latest_upload_id")
-        upload = self.uploads.get(upload_id) if upload_id else None
+        upload = self._get_candidate_upload(candidate)
         return upload["updated_at"] if upload else candidate["created_at"]
+
+    def _get_candidate_submitted_at(self, candidate: dict[str, Any]) -> datetime | None:
+        result_id = self._find_candidate_result_id(candidate["candidate_id"])
+        if not result_id:
+            return None
+        return self.results[result_id]["submitted_at"]
+
+    def _get_candidate_updated_at(self, candidate: dict[str, Any]) -> datetime:
+        submitted_at = self._get_candidate_submitted_at(candidate)
+        if submitted_at:
+            return submitted_at
+        return self._get_candidate_profile_completed_at(candidate)
+
+    def _is_candidate_pending_review(self, candidate: dict[str, Any]) -> bool:
+        return candidate["status"] == "待审核"
+
+    def _is_candidate_paper_sent(self, candidate: dict[str, Any]) -> bool:
+        return self._find_candidate_invitation_token(candidate["candidate_id"]) is not None
+
+    def _get_candidate_paper_status(self, candidate: dict[str, Any]) -> str:
+        if self._is_candidate_paper_sent(candidate):
+            return "published"
+        if candidate.get("paper_ids"):
+            return "draft"
+        return "none"
+
+    def _build_candidate_risk(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        result_id = self._find_candidate_result_id(candidate["candidate_id"])
+        event_count = 0
+        if result_id:
+            event_count = len(self.results[result_id].get("risk_events", []))
+
+        analysis_risks = candidate.get("analysis", {}).get("risks", [])
+        review_text = " ".join(candidate.get("review_notes", []))
+        evidence_risk = any(marker in review_text for marker in ("待核实", "低文本", "风险", "性能提升"))
+        count = len(analysis_risks) + event_count
+        if candidate["quality"] != "高":
+            count += 1
+        if evidence_risk:
+            count += 1
+
+        if event_count:
+            return {"flag": f"风险事件 {event_count}", "level": "high", "count": count}
+        if count:
+            return {"flag": "需核实", "level": "medium", "count": count}
+        return {"flag": "无", "level": "low", "count": 0}
+
+    def _build_candidate_next_action(self, candidate: dict[str, Any]) -> dict[str, str]:
+        candidate_id = candidate["candidate_id"]
+        result_id = self._find_candidate_result_id(candidate_id)
+        if candidate["status"] == "已交卷" and result_id:
+            return {"label": "结果复核", "target": f"/admin/results/{result_id}"}
+        if candidate["status"] == "待发卷" and candidate.get("paper_ids"):
+            paper_id = candidate["paper_ids"][-1]
+            return {"label": "发卷", "target": f"/admin/papers/{paper_id}?candidateId={candidate_id}"}
+        if candidate["status"] in {"已完成筛选", "已归档"}:
+            return {"label": "查看档案", "target": f"/admin/candidates/{candidate_id}"}
+        return {"label": "查看详情", "target": f"/admin/candidates/{candidate_id}"}
 
     def _serialize_candidate_detail(self, candidate: dict[str, Any]) -> dict[str, Any]:
         if candidate["paper_ids"]:

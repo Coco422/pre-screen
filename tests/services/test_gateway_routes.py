@@ -56,6 +56,53 @@ def test_gateway_admin_candidates_endpoint_returns_items():
     assert response.json()["items"]
 
 
+def test_gateway_candidates_endpoint_filters_and_returns_workbench_fields():
+    client = TestClient(app)
+
+    pending_response = client.get(
+        "/admin/candidates",
+        params={
+            "pending_review": "true",
+            "sort_by": "resume_uploaded_at",
+            "order": "asc",
+        },
+    )
+
+    assert pending_response.status_code == 200
+    pending_payload = pending_response.json()
+    assert [item["id"] for item in pending_payload["items"]] == ["c-002"]
+    assert pending_payload["items"][0]["resume_parse_status"] == "parsed"
+    assert pending_payload["items"][0]["screening_status"] == "待审核"
+    assert pending_payload["items"][0]["risk_flag"] == "需核实"
+    assert pending_payload["items"][0]["resume_uploaded_at"]
+    assert pending_payload["items"][0]["updated_at"]
+    assert pending_payload["items"][0]["next_action"] == {
+        "label": "查看详情",
+        "target": "/admin/candidates/c-002",
+    }
+
+    published_response = client.get(
+        "/admin/candidates",
+        params={
+            "role": "前端开发工程师",
+            "paper_sent": "true",
+            "sort_by": "updated_at",
+            "order": "desc",
+        },
+    )
+
+    assert published_response.status_code == 200
+    published_items = published_response.json()["items"]
+    assert [item["id"] for item in published_items] == ["c-004", "c-003"]
+    assert all(item["paper_sent"] for item in published_items)
+    assert published_items[0]["next_action"]["label"] == "结果复核"
+
+    risk_response = client.get("/admin/candidates", params={"risk_level": "high"})
+
+    assert risk_response.status_code == 200
+    assert [item["id"] for item in risk_response.json()["items"]] == ["c-004"]
+
+
 def test_gateway_dashboard_endpoint_returns_metrics_and_priority_lists():
     client = TestClient(app)
 

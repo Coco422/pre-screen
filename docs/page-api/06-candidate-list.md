@@ -7,7 +7,7 @@
 
 | Method | Path | 状态 | 用途 |
 | --- | --- | --- | --- |
-| `GET` | `/api/admin/candidates` | 建议扩展 | 候选人列表和多条件筛选 |
+| `GET` | `/api/admin/candidates` | 已扩展 | 候选人列表和多条件筛选 |
 
 ## 推荐筛选参数
 
@@ -15,6 +15,7 @@
 - `role`
 - `status`
 - `pending_review=true|false`
+- `paper_sent=true|false`
 - `paper_status=draft|ready|published`
 - `risk_level=low|medium|high`
 - `keyword`
@@ -31,6 +32,9 @@
 - `resume_parse_status`
 - `screening_status`
 - `risk_flag`
+- `risk_level`
+- `resume_uploaded_at`
+- `paper_sent`
 - `updated_at`
 - `next_action`
 - `paper_id`

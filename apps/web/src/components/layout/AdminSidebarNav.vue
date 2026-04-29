@@ -1,10 +1,9 @@
 <template>
   <aside class="admin-sidebar">
     <div class="admin-sidebar__brand">
-      <div class="admin-sidebar__logo">P</div>
+      <div class="admin-sidebar__logo" aria-label="Pre-Screen logo"></div>
       <div class="admin-sidebar__brand-copy">
         <strong>Pre-Screen</strong>
-        <p>招聘预筛控制台</p>
       </div>
     </div>
 

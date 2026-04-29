@@ -8,8 +8,10 @@
         :user-name="sessionStore.userName || 'HR_Admin'"
         @sign-out="signOut"
       />
-      <AdminProcessingMonitorBar />
-      <RouterView />
+      <section class="admin-console__content">
+        <AdminProcessingMonitorBar />
+        <RouterView />
+      </section>
     </main>
   </div>
 </template>

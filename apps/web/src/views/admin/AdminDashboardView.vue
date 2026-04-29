@@ -141,7 +141,7 @@ onMounted(async () => {
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .dashboard-state-card,
@@ -149,9 +149,9 @@ onMounted(async () => {
 .dashboard-panel,
 .dashboard-metric {
   border: 1px solid #d7e4f4;
-  border-radius: 16px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 28px rgba(23, 42, 76, 0.05);
+  box-shadow: 0 2px 8px rgba(23, 42, 76, 0.04);
 }
 
 .dashboard-state-card,
@@ -170,13 +170,13 @@ onMounted(async () => {
 .dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 .dashboard-metric {
   display: grid;
-  gap: 10px;
-  padding: 18px;
+  gap: 8px;
+  padding: 16px;
 }
 
 .dashboard-metric span {
@@ -193,13 +193,13 @@ onMounted(async () => {
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .dashboard-panel {
   display: grid;
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px;
 }
 
 .dashboard-panel__head {
@@ -230,9 +230,9 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid #e1ebf7;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #f8fbff;
 }
 

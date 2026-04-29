@@ -52,9 +52,8 @@ describe("AdminLoginView", () => {
     expect(wrapper.get('input[name="password"]').attributes("autocomplete")).toBe("current-password");
     expect(wrapper.text()).toContain("Pre-Screen");
     expect(wrapper.text()).toContain("HR 登录");
-    expect(wrapper.text()).toContain("招聘初筛控制台");
+    expect(wrapper.text()).toContain("技术招聘智能筛选系统");
     expect(wrapper.text()).not.toContain("记住账号");
-    expect(wrapper.text()).not.toContain("忘记密码");
   });
 
   it("submits the form and redirects to the dashboard", async () => {

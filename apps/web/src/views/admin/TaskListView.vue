@@ -1,40 +1,32 @@
 <template>
   <section class="task-list-page">
     <header class="task-list-page__header">
-      <div class="task-list-page__heading">
+      <div class="task-list-page__heading" aria-hidden="true">
         <p class="task-list-page__eyebrow">任务中心</p>
-        <div class="task-list-page__title-row">
-          <h2 class="task-list-page__title">筛选任务列表</h2>
-          <span class="task-list-page__count">{{ filteredTasks.length }} 条任务</span>
-        </div>
+        <h2 class="task-list-page__title">筛选任务列表</h2>
+        <span class="task-list-page__count">{{ filteredTasks.length }} 条任务</span>
       </div>
 
       <div class="task-list-page__actions">
-        <span class="task-list-page__summary">{{ tasks.length }} 个任务</span>
-
         <RouterLink v-slot="{ navigate }" :to="{ name: 'admin-task-create' }" custom>
           <el-button class="task-list-page__create" type="primary" @click="navigate">+ 新建任务</el-button>
         </RouterLink>
       </div>
-    </header>
 
-    <section class="task-list-page__toolbar">
-      <div class="task-list-page__toolbar-card">
-        <div class="task-list-page__filters">
-          <el-select v-model="roleFilter" clearable placeholder="全部岗位">
-            <el-option label="全部岗位" value="" />
-            <el-option v-for="role in roleOptions" :key="role" :label="role" :value="role" />
-          </el-select>
+      <div class="task-list-page__filters">
+        <el-select v-model="roleFilter" clearable placeholder="全部岗位">
+          <el-option label="全部岗位" value="" />
+          <el-option v-for="role in roleOptions" :key="role" :label="role" :value="role" />
+        </el-select>
 
-          <el-select v-model="statusFilter" clearable placeholder="全部状态">
-            <el-option label="全部状态" value="" />
-            <el-option v-for="status in statusOptions" :key="status" :label="status" :value="status" />
-          </el-select>
+        <el-select v-model="statusFilter" clearable placeholder="全部状态">
+          <el-option label="全部状态" value="" />
+          <el-option v-for="status in statusOptions" :key="status" :label="status" :value="status" />
+        </el-select>
 
-          <el-input v-model="keyword" clearable placeholder="搜索任务名称 / 岗位 / ID" />
-        </div>
+        <el-input v-model="keyword" clearable placeholder="搜索任务名称 / 岗位 / ID" />
       </div>
-    </section>
+    </header>
 
     <section class="task-list-panel">
       <el-skeleton v-if="loading" :rows="6" animated />
@@ -51,47 +43,46 @@
 
       <el-table
         v-else
-        :data="filteredTasks"
+        :data="pagedTasks"
         row-key="id"
         empty-text="暂无任务"
         class="task-list-table"
         header-row-class-name="task-list-table__header"
+        :max-height="tableMaxHeight"
       >
-        <el-table-column label="任务名称" min-width="280">
+        <el-table-column label="任务名称" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">
             <RouterLink class="task-cell__link" :to="{ name: 'admin-task-detail', params: { taskId: row.id } }">
               <div class="task-cell">
                 <strong class="task-cell__title">{{ row.title }}</strong>
-                <span class="task-cell__meta">ID {{ row.id }}</span>
               </div>
             </RouterLink>
           </template>
         </el-table-column>
 
-        <el-table-column label="岗位" min-width="180" prop="role" />
+        <el-table-column label="岗位" min-width="180" prop="role" show-overflow-tooltip />
 
-        <el-table-column label="负责人" min-width="150">
+        <el-table-column label="负责人" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="owner-cell">
               <span class="owner-cell__label">{{ buildOwnerLabel(row) }}</span>
-              <span class="owner-cell__meta">系统分配</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="创建时间" min-width="170">
+        <el-table-column label="创建时间" min-width="170" show-overflow-tooltip>
           <template #default="{ row }">
             {{ formatDateTime(row.createdAt) }}
           </template>
         </el-table-column>
 
-        <el-table-column label="候选人数" width="110">
+        <el-table-column label="候选人数" width="110" show-overflow-tooltip>
           <template #default="{ row }">
             {{ row.candidateCount }} 人
           </template>
         </el-table-column>
 
-        <el-table-column label="进度" min-width="180">
+        <el-table-column label="进度" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="progress-cell">
               <div class="progress-cell__head">
@@ -110,24 +101,35 @@
 
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="statusToneMap[row.status] ?? 'info'" effect="plain">{{ row.status }}</el-tag>
+            <span class="task-status" :class="`task-status--${statusClassMap[row.status] ?? 'default'}`">
+              {{ row.status }}
+            </span>
           </template>
         </el-table-column>
 
-        <el-table-column fixed="right" label="操作" width="96">
+        <el-table-column fixed="right" label="操作" width="112">
           <template #default="{ row }">
             <RouterLink v-slot="{ navigate }" :to="{ name: 'admin-task-detail', params: { taskId: row.id } }" custom>
-              <el-button class="task-list-page__action" link type="primary" @click="navigate">进入</el-button>
+              <button class="task-list-page__action" type="button" @click="navigate">查看详情</button>
             </RouterLink>
           </template>
         </el-table-column>
       </el-table>
+
+      <footer v-if="filteredTasks.length > 0" class="task-list-pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="filteredTasks.length"
+          layout="total, prev, pager, next"
+        />
+      </footer>
     </section>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 
 import { loadTasks, type ScreeningTaskSummary } from "../../lib/gateway";
@@ -138,13 +140,16 @@ const keyword = ref("");
 const roleFilter = ref("");
 const statusFilter = ref("");
 const tasks = ref<ScreeningTaskSummary[]>([]);
+const currentPage = ref(1);
+const pageSize = 10;
+const tableMaxHeight = "100%";
 
 const ownerPool = ["华北组", "华东组", "华南组", "中台组", "专项组"];
 
-const statusToneMap: Record<string, "success" | "warning" | "primary" | "info" | "danger"> = {
+const statusClassMap: Record<string, string> = {
   待上传: "warning",
-  进行中: "primary",
-  已暂停: "info",
+  进行中: "processing",
+  已暂停: "muted",
   已完成: "success",
   已关闭: "danger"
 };
@@ -162,6 +167,23 @@ const filteredTasks = computed(() => {
 
     return matchesRole && matchesStatus && matchesKeyword;
   });
+});
+
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredTasks.value.length / pageSize)));
+
+const pagedTasks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredTasks.value.slice(start, start + pageSize);
+});
+
+watch([keyword, roleFilter, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+watch(totalPages, (nextTotalPages) => {
+  if (currentPage.value > nextTotalPages) {
+    currentPage.value = nextTotalPages;
+  }
 });
 
 function hashText(input: string) {
@@ -242,27 +264,32 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 100%;
-  padding: 16px 18px 18px;
-  border: 1px solid #d6e1ef;
-  border-radius: 14px;
-  background:
-    linear-gradient(180deg, #f7fbff 0%, #f3f7fd 100%),
-    #f7fbff;
+  width: 100%;
+  height: calc(100vh - 96px);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 14px 16px 16px;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .task-list-page__header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 4px 4px 8px;
+  align-items: center;
+  flex: none;
+  gap: 12px;
+  padding: 0 0 4px;
+  min-width: 0;
 }
 
 .task-list-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .task-list-page__title-row {
@@ -302,6 +329,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: none;
+  padding-right: 8px;
 }
 
 .task-list-page__summary {
@@ -309,29 +338,22 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.task-list-page__toolbar {
-  padding: 0;
-}
-
-.task-list-page__toolbar-card {
-  padding: 10px 12px;
-  border: 1px solid #dce6f2;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 24px rgba(36, 61, 94, 0.05);
-}
-
 .task-list-page__filters {
   display: grid;
-  grid-template-columns: 180px 160px minmax(260px, 1fr);
+  grid-template-columns: minmax(140px, 180px) minmax(120px, 160px) minmax(200px, 1fr);
   gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .task-list-panel {
-  min-height: 360px;
-  padding: 10px;
-  border: 1px solid #d6e1ef;
-  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
   background: #ffffff;
 }
 
@@ -343,42 +365,66 @@ onMounted(() => {
 }
 
 :deep(.task-list-table) {
-  --el-table-border-color: #dbe4f0;
-  --el-table-header-bg-color: #f5f8fc;
-  --el-table-row-hover-bg-color: #f8fbff;
+  --el-table-border-color: #edf1f6;
+  --el-table-header-bg-color: #f4f6f9;
+  --el-table-row-hover-bg-color: #f7faff;
   --el-table-header-text-color: #526885;
   --el-table-text-color: #1f2f46;
-  --el-fill-color-lighter: #f7fbff;
-  border: 1px solid #dbe4f0;
-  border-radius: 10px;
+  --el-fill-color-lighter: #f7f9fc;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+:deep(.task-list-table .el-table__inner-wrapper),
+:deep(.task-list-table .el-table__body-wrapper),
+:deep(.task-list-table .el-scrollbar) {
+  min-width: 0;
+}
+
+:deep(.task-list-table::before),
+:deep(.task-list-table__inner-wrapper::before) {
+  display: none;
 }
 
 :deep(.task-list-table th.el-table__cell) {
-  padding: 10px 0;
+  padding: 12px 0;
+  background: #f4f6f9;
+  color: #394b63;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 :deep(.task-list-table td.el-table__cell) {
-  padding: 11px 0;
+  padding: 13px 0;
+  border-bottom-color: #edf1f6;
 }
 
 .task-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .task-cell__link {
   display: block;
+  min-width: 0;
   text-decoration: none;
 }
 
 .task-cell__title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
   color: #153c79;
   font-size: 14px;
   font-weight: 600;
+  text-overflow: ellipsis;
   transition: color 0.18s ease;
+  white-space: nowrap;
 }
 
 .task-cell__meta,
@@ -395,18 +441,25 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .owner-cell__label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
   color: #284b84;
   font-size: 13px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .progress-cell {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   color: #54667f;
   font-size: 12px;
 }
@@ -424,8 +477,15 @@ onMounted(() => {
 }
 
 .task-list-page__action {
-  padding: 0;
-  font-weight: 600;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #cfe0f8;
+  border-radius: 4px;
+  background: #f4f8ff;
+  color: #2568d8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 :deep(.el-button--primary) {
@@ -442,7 +502,7 @@ onMounted(() => {
 :deep(.el-input__wrapper),
 :deep(.el-select__wrapper) {
   min-height: 36px;
-  border-radius: 8px;
+  border-radius: 4px;
   box-shadow: inset 0 0 0 1px #d7e2ef;
 }
 
@@ -454,8 +514,70 @@ onMounted(() => {
   background: linear-gradient(90deg, #5d8ef0 0%, #2f69d9 100%);
 }
 
+.task-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.task-status--warning {
+  background: #fff7e8;
+  color: #b7791f;
+}
+
+.task-status--processing {
+  background: #eaf2ff;
+  color: #2568d8;
+}
+
+.task-status--muted {
+  background: #f1f4f8;
+  color: #6b7788;
+}
+
+.task-status--success {
+  background: #eaf8f1;
+  color: #23845d;
+}
+
+.task-status--danger {
+  background: #fff0f0;
+  color: #c24141;
+}
+
+.task-status--default {
+  background: #f1f4f8;
+  color: #65758b;
+}
+
+.task-list-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  min-height: 46px;
+  padding: 10px 4px 0;
+}
+
+.task-list-pagination :deep(.el-pagination) {
+  --el-pagination-bg-color: #ffffff;
+  --el-pagination-button-color: #40546f;
+  --el-pagination-hover-color: #2568d8;
+  --el-pagination-button-disabled-bg-color: #ffffff;
+  font-weight: 600;
+}
+
 @media (max-width: 960px) {
   .task-list-page {
+    height: auto;
+    max-height: none;
+    min-height: calc(100vh - 88px);
     padding: 16px;
   }
 

@@ -32,10 +32,18 @@
 
           <div v-if="dashboard.screeningCandidates.length" class="dashboard-list">
             <RouterLink v-for="item in dashboard.screeningCandidates" :key="item.candidateId" class="dashboard-list__item" :to="item.target">
-              <strong>{{ item.name }}</strong>
-              <span>{{ item.role }}</span>
-              <span>{{ item.status }}</span>
-              <time>{{ formatDateTime(item.resumeUploadedAt) }}</time>
+              <el-tooltip :content="item.name" placement="top" :show-after="300">
+                <strong class="dashboard-list__text">{{ item.name }}</strong>
+              </el-tooltip>
+              <el-tooltip :content="item.role" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.role }}</span>
+              </el-tooltip>
+              <el-tooltip :content="item.status" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.status }}</span>
+              </el-tooltip>
+              <el-tooltip :content="formatDateTime(item.resumeUploadedAt)" placement="top" :show-after="300">
+                <time class="dashboard-list__text">{{ formatDateTime(item.resumeUploadedAt) }}</time>
+              </el-tooltip>
             </RouterLink>
           </div>
           <div v-else class="dashboard-empty">当前没有筛选中的候选人。</div>
@@ -49,10 +57,18 @@
 
           <div v-if="dashboard.pendingPublishCandidates.length" class="dashboard-list">
             <RouterLink v-for="item in dashboard.pendingPublishCandidates" :key="item.candidateId" class="dashboard-list__item" :to="item.target">
-              <strong>{{ item.name }}</strong>
-              <span>{{ item.role }}</span>
-              <span>{{ item.status }}</span>
-              <time>{{ formatDateTime(item.profileCompletedAt) }}</time>
+              <el-tooltip :content="item.name" placement="top" :show-after="300">
+                <strong class="dashboard-list__text">{{ item.name }}</strong>
+              </el-tooltip>
+              <el-tooltip :content="item.role" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.role }}</span>
+              </el-tooltip>
+              <el-tooltip :content="item.status" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.status }}</span>
+              </el-tooltip>
+              <el-tooltip :content="formatDateTime(item.profileCompletedAt)" placement="top" :show-after="300">
+                <time class="dashboard-list__text">{{ formatDateTime(item.profileCompletedAt) }}</time>
+              </el-tooltip>
             </RouterLink>
           </div>
           <div v-else class="dashboard-empty">当前没有待发卷候选人。</div>
@@ -66,10 +82,18 @@
 
           <div v-if="dashboard.submittedResults.length" class="dashboard-list">
             <RouterLink v-for="item in dashboard.submittedResults" :key="item.resultId" class="dashboard-list__item" :to="item.target">
-              <strong>{{ item.candidateName }}</strong>
-              <span>{{ item.role }}</span>
-              <span>{{ item.totalScore }} 分</span>
-              <time>{{ formatDateTime(item.submittedAt) }}</time>
+              <el-tooltip :content="item.candidateName" placement="top" :show-after="300">
+                <strong class="dashboard-list__text">{{ item.candidateName }}</strong>
+              </el-tooltip>
+              <el-tooltip :content="item.role" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.role }}</span>
+              </el-tooltip>
+              <el-tooltip :content="`${item.totalScore} 分`" placement="top" :show-after="300">
+                <span class="dashboard-list__text">{{ item.totalScore }} 分</span>
+              </el-tooltip>
+              <el-tooltip :content="formatDateTime(item.submittedAt)" placement="top" :show-after="300">
+                <time class="dashboard-list__text">{{ formatDateTime(item.submittedAt) }}</time>
+              </el-tooltip>
             </RouterLink>
           </div>
           <div v-else class="dashboard-empty">当前还没有已交卷结果。</div>
@@ -290,15 +314,19 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+.dashboard-list__text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dashboard-list__item span,
 .dashboard-list__item time {
-  min-width: 0;
   color: #62728d;
   font-size: 13px;
   line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .dashboard-list__item time {

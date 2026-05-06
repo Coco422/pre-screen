@@ -1,23 +1,22 @@
 <template>
   <section v-if="task" class="task-detail-page">
-    <article class="glass-card task-hero">
+    <article class="task-detail-section task-hero">
       <div class="page-head">
         <div>
-          <div class="pill">Task Detail</div>
-          <h2 class="section-title page-title">{{ task.title }}</h2>
-          <p class="section-copy">{{ task.role }} · {{ task.status }}</p>
+          <h2 class="page-title">{{ task.title }} · {{ task.status }}</h2>
+          <!-- <p class="page-subtitle">{{ task.role }} · {{ task.status }}</p> -->
         </div>
         <div class="head-actions">
-          <RouterLink class="secondary-btn" :to="{ name: 'admin-workbench' }">工作台</RouterLink>
-          <RouterLink class="secondary-btn" :to="{ name: 'admin-candidates', query: { taskId: task.id } }">候选人</RouterLink>
+          <RouterLink class="outline-btn" :to="{ name: 'admin-tasks' }">返回任务中心</RouterLink>
+          <RouterLink class="outline-btn" :to="{ name: 'admin-candidates', query: { taskId: task.id } }">查看候选人</RouterLink>
         </div>
       </div>
 
-      <div class="monitor-band" :class="{ 'monitor-band--active': hasActiveProcessing }">
-        <div class="monitor-band-head">
-          <div class="monitor-band-title">
+      <div class="flow-panel">
+        <div class="flow-panel-head">
+          <div class="flow-panel-title">
             <span class="monitor-dot" :class="{ 'monitor-dot--pulse': hasActiveProcessing }"></span>
-            <strong>{{ hasActiveProcessing ? "系统正在后台处理" : "系统最近一次状态" }}</strong>
+            <strong>处理进度</strong>
           </div>
           <div class="monitor-meta">
             <span>{{ refreshing ? "正在拉取最新状态" : `上次同步 ${lastSyncedLabel}` }}</span>
@@ -26,40 +25,34 @@
           </div>
         </div>
 
-        <div class="monitor-band-body">
-          <div class="monitor-band-summary">
-            <AdminToneBadge :label="monitorSummary.label" :tone="monitorSummary.tone" />
-            <p class="monitor-band-copy">{{ monitorSummary.detail }}</p>
-            <div class="monitor-band-footnote">刷新页面后会保留最近一次同步状态和动作记录。</div>
-          </div>
-
-          <div class="monitor-timeline" v-if="monitorEvents.length">
-            <div class="monitor-timeline-label">系统刚刚做了什么</div>
-            <div class="monitor-timeline-list">
-              <article class="monitor-event" v-for="event in monitorEvents" :key="event.id">
-                <div class="monitor-event-head">
-                  <AdminToneBadge :label="event.label" :tone="event.tone" />
-                  <span class="monitor-event-time">{{ formatTime(event.at) }}</span>
-                </div>
-                <div class="monitor-event-copy">{{ event.detail }}</div>
-              </article>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flow-panel">
         <div class="flow-summary">
           <div class="flow-copy">
-            <AdminToneBadge :label="flowSummary.label" :tone="flowSummary.tone" />
-            <p class="flow-text">{{ flowSummary.detail }}</p>
+            <div class="flow-card-title">当前状态</div>
+            <div class="flow-status-row">
+              <AdminToneBadge :label="monitorSummary.label" :tone="monitorSummary.tone" />
+              <strong>{{ monitorSummary.progress }}%</strong>
+            </div>
+            <el-progress
+              :percentage="monitorSummary.progress"
+              :show-text="false"
+              :stroke-width="8"
+              :status="progressStatus(monitorSummary.tone)"
+            />
+            <p class="flow-text">{{ monitorSummary.detail }}</p>
           </div>
-          <AdminProgressMeter
-            label="整体解析进度"
-            :value="flowSummary.progress"
-            :caption="flowProgressCaption"
-            :tone="flowSummary.tone"
-          />
+          <div class="flow-progress-card">
+            <div class="flow-card-title">整体解析进度</div>
+            <div class="flow-status-row">
+              <span>{{ flowProgressCaption }}</span>
+              <strong>{{ flowSummary.progress }}%</strong>
+            </div>
+            <el-progress
+              :percentage="flowSummary.progress"
+              :show-text="false"
+              :stroke-width="8"
+              :status="progressStatus(flowSummary.tone)"
+            />
+          </div>
         </div>
 
         <div class="flow-steps">
@@ -79,60 +72,47 @@
             </div>
           </article>
         </div>
-      </div>
 
-      <div class="metric-grid">
-        <article class="metric-tile">
-          <div class="metric-value">{{ task.uploads.length }}</div>
-          <div class="metric-label">已上传简历</div>
-        </article>
-        <article class="metric-tile">
-          <div class="metric-value">{{ task.candidates.length }}</div>
-          <div class="metric-label">解析候选人</div>
-        </article>
-        <article class="metric-tile">
-          <div class="metric-value">{{ parsingCount }}</div>
-          <div class="metric-label">解析中</div>
-        </article>
-        <article class="metric-tile">
-          <div class="metric-value">{{ readyForPaperCount }}</div>
-          <div class="metric-label">待发卷</div>
-        </article>
+        <div class="monitor-timeline" v-if="monitorEvents.length">
+          <div class="monitor-timeline-label">最近动作</div>
+          <div class="monitor-timeline-list">
+            <article class="monitor-event" v-for="event in monitorEvents.slice(0, 3)" :key="event.id">
+              <div class="monitor-event-head">
+                <AdminToneBadge :label="event.label" :tone="event.tone" />
+                <span class="monitor-event-time">{{ formatTime(event.at) }}</span>
+              </div>
+              <div class="monitor-event-copy">{{ event.detail }}</div>
+            </article>
+          </div>
+        </div>
       </div>
     </article>
 
-    <article class="glass-card upload-card">
-      <div class="panel-head">
-        <div>
-          <h3>上传 PDF 简历</h3>
-          <p class="section-copy">支持一次上传多个 PDF。上传后会自动创建候选人占位，并展示每份简历当前所处阶段。</p>
-        </div>
-        <input
-          ref="fileInputRef"
-          class="file-input"
-          type="file"
-          accept="application/pdf"
-          multiple
-          @change="handleFileSelect"
-        />
-      </div>
-
+    <div class="task-detail-grid">
+    <article class="task-detail-section upload-card">
       <div class="upload-actions">
-        <button class="primary-btn" type="button" @click="openPicker">选择 PDF</button>
-        <button class="secondary-btn" type="button" :disabled="refreshing" @click="refreshTask">
+        <el-upload
+          class="resume-upload"
+          drag
+          multiple
+          accept="application/pdf"
+          action="#"
+          :show-file-list="false"
+          :http-request="uploadResumeRequest"
+          :before-upload="beforeResumeUpload"
+        >
+          <el-icon class="resume-upload__icon"><UploadFilled /></el-icon>
+          <div class="resume-upload__text">点击或拖拽 PDF 到这里上传</div>
+          <template #tip>
+            <div class="resume-upload__tip">支持多个 PDF，上传后系统会自动解析并创建候选人。</div>
+          </template>
+        </el-upload>
+        <button class="outline-btn" type="button" :disabled="refreshing" @click="refreshTask">
           {{ refreshing ? "刷新中..." : "刷新状态" }}
         </button>
       </div>
 
       <div v-if="uploadMessage" class="info-banner">{{ uploadMessage }}</div>
-
-      <div class="system-strip">
-        <div>
-          <div class="system-strip-label">系统当前动作</div>
-          <div class="system-strip-value">{{ monitorSummary.label }}</div>
-        </div>
-        <div class="system-strip-copy">{{ monitorSummary.detail }}</div>
-      </div>
 
       <div v-if="uploadEntries.length" class="upload-list">
         <article class="upload-item" v-for="upload in uploadEntries" :key="upload.id">
@@ -169,7 +149,7 @@
             <div class="upload-note">{{ upload.stage.detail }}</div>
             <RouterLink
               v-if="upload.candidateId"
-              class="secondary-btn inline-btn"
+              class="outline-btn inline-btn"
               :to="{ name: 'admin-candidate-detail', params: { candidateId: upload.candidateId } }"
             >
               查看候选人
@@ -181,11 +161,10 @@
       <div v-else class="empty-state">还没有上传 PDF，任务会在收到第一份简历后开始生成候选人占位。</div>
     </article>
 
-    <article class="glass-card candidate-card">
+    <article class="task-detail-section candidate-card">
       <div class="panel-head">
         <div>
           <h3>任务候选人</h3>
-          <p class="section-copy">这里保留每位候选人的最新解析摘要和下一步入口。</p>
         </div>
       </div>
 
@@ -210,20 +189,20 @@
           </div>
 
           <div class="candidate-actions">
-            <RouterLink class="secondary-btn inline-btn" :to="buildCandidateDetailPath(candidate.id)">详情</RouterLink>
-            <RouterLink class="primary-btn inline-btn" :to="paperTarget(candidate)">发卷</RouterLink>
+            <RouterLink class="outline-btn inline-btn" :to="buildCandidateDetailPath(candidate.id)">详情</RouterLink>
+            <RouterLink class="primary-action inline-btn" :to="paperTarget(candidate)">发卷</RouterLink>
           </div>
         </article>
       </div>
 
       <div v-else class="empty-state">解析完成后，候选人会出现在这里并给出发卷入口。</div>
     </article>
+    </div>
   </section>
 
-  <section v-else class="glass-card task-empty">
-    <div class="pill">Task Detail</div>
-    <h2 class="section-title">{{ loadError || "正在加载任务详情..." }}</h2>
-    <p v-if="monitorState" class="section-copy">
+  <section v-else class="task-detail-section task-empty">
+    <h2>{{ loadError || "正在加载任务详情..." }}</h2>
+    <p v-if="monitorState">
       已恢复上次同步状态：{{ monitorState.label }} · {{ formatTime(monitorState.lastSyncedAt) }}
     </p>
     <div v-if="monitorState?.events.length" class="task-empty-events">
@@ -239,6 +218,9 @@
 </template>
 
 <script setup lang="ts">
+import type { UploadRequestOptions } from "element-plus";
+
+import { UploadFilled } from "@element-plus/icons-vue";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 
@@ -256,7 +238,6 @@ const task = ref<Awaited<ReturnType<typeof loadTaskDetail>> | null>(null);
 const loadError = ref("");
 const uploadMessage = ref("");
 const refreshing = ref(false);
-const fileInputRef = ref<HTMLInputElement | null>(null);
 const monitorState = ref<TaskMonitorState | null>(null);
 const clockNow = ref(Date.now());
 const taskId = computed(() => (typeof route.params.taskId === "string" ? route.params.taskId : ""));
@@ -271,7 +252,6 @@ const taskFlowSteps = [
 ];
 
 const parsingCount = computed(() => task.value?.uploads.filter((item) => item.status !== "parsed" && item.status !== "failed").length ?? 0);
-const readyForPaperCount = computed(() => task.value?.candidates.filter((candidate) => candidate.status === "待发卷").length ?? 0);
 const flowSummary = computed(() => summarizeTaskFlow(task.value?.uploads ?? []));
 const monitorSummary = computed(() => monitorState.value ?? {
   label: flowSummary.value.label,
@@ -343,6 +323,13 @@ function toneForStatus(status: string): AdminTone {
   return "warning";
 }
 
+function progressStatus(tone: AdminTone) {
+  if (tone === "success" || tone === "warning" || tone === "danger") {
+    return tone;
+  }
+  return undefined;
+}
+
 function formatTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     hour12: false,
@@ -381,10 +368,6 @@ function stopPolling() {
     window.clearInterval(pollingTimer);
     pollingTimer = null;
   }
-}
-
-function openPicker() {
-  fileInputRef.value?.click();
 }
 
 function paperTarget(candidate: CandidateCard) {
@@ -430,29 +413,52 @@ async function refreshTask() {
   }
 }
 
-async function handleFileSelect(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const files = Array.from(input.files ?? []);
-  if (!files.length || !taskId.value) {
+function beforeResumeUpload(file: File) {
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    uploadMessage.value = "仅支持上传 PDF 文件。";
+    return false;
+  }
+  return true;
+}
+
+function buildUploadError(message: string) {
+  return Object.assign(new Error(message), {
+    name: "UploadAjaxError",
+    status: 0,
+    method: "POST",
+    url: `/admin/tasks/${taskId.value}/uploads`
+  });
+}
+
+async function uploadResumeRequest(options: UploadRequestOptions) {
+  if (!taskId.value) {
+    options.onError(buildUploadError("任务不存在，无法上传。"));
     return;
   }
 
-  uploadMessage.value = `已接收 ${files.length} 份 PDF，系统正在创建解析任务；即使刷新页面，最近动作也会保留。`;
-  const createdUploads = await uploadTaskResumes(taskId.value, files);
-  if (task.value) {
-    const existingUploads = task.value.uploads.filter(
-      (item) => createdUploads.some((createdUpload) => createdUpload.id === item.id) === false
-    );
-    const optimisticUploads = [...existingUploads, ...createdUploads];
-    task.value = {
-      ...task.value,
-      uploads: optimisticUploads
-    };
-    syncMonitorState(task.value);
+  const file = options.file;
+  uploadMessage.value = `已接收 ${file.name}，系统正在创建解析任务。`;
+  try {
+    const createdUploads = await uploadTaskResumes(taskId.value, [file]);
+    if (task.value) {
+      const existingUploads = task.value.uploads.filter(
+        (item) => createdUploads.some((createdUpload) => createdUpload.id === item.id) === false
+      );
+      const optimisticUploads = [...existingUploads, ...createdUploads];
+      task.value = {
+        ...task.value,
+        uploads: optimisticUploads
+      };
+      syncMonitorState(task.value);
+    }
+    await refreshTask();
+    startPolling();
+    options.onSuccess(createdUploads);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "上传失败。";
+    uploadMessage.value = message;
+    options.onError(buildUploadError(message));
   }
-  await refreshTask();
-  startPolling();
-  input.value = "";
 }
 
 watch(
@@ -483,14 +489,22 @@ onBeforeUnmount(() => {
 <style scoped>
 .task-detail-page {
   display: grid;
-  gap: 20px;
+  gap: 14px;
+  min-width: 0;
 }
 
-.task-hero,
-.upload-card,
-.candidate-card,
-.task-empty {
-  padding: 24px;
+.task-detail-section {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.task-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 14px;
+  min-width: 0;
 }
 
 .page-head,
@@ -503,50 +517,48 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
+}
+
+.page-title,
+.task-empty h2,
+.panel-head h3 {
+  margin: 0;
+  color: #17253d;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .page-title {
-  margin: 16px 0 0;
+  font-size: 20px;
+}
+
+.page-subtitle,
+.panel-head p,
+.task-empty p,
+.flow-text,
+.monitor-timeline-label,
+.monitor-event-copy,
+.upload-meta,
+.upload-note,
+.candidate-meta,
+.candidate-summary,
+.candidate-processing,
+.empty-state {
+  color: #66758a;
+}
+
+.page-subtitle,
+.panel-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
 }
 
 .head-actions,
 .upload-actions,
 .upload-badges,
 .candidate-badges,
-.candidate-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.flow-panel {
-  display: grid;
-  gap: 18px;
-  margin-top: 20px;
-  padding: 18px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(228, 242, 248, 0.82));
-  border: 1px solid rgba(14, 116, 144, 0.08);
-}
-
-.monitor-band {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(15, 118, 110, 0.12);
-}
-
-.monitor-band--active {
-  box-shadow: 0 20px 40px rgba(15, 118, 110, 0.08);
-}
-
-.monitor-band-head,
-.monitor-band-title,
-.monitor-meta,
-.monitor-event-head,
+.candidate-actions,
 .upload-step-row,
 .task-empty-events {
   display: flex;
@@ -554,252 +566,346 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 
-.monitor-band-head {
-  justify-content: space-between;
+.outline-btn,
+.primary-action {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.monitor-band-title {
-  align-items: center;
-  font-size: 1rem;
+.outline-btn {
+  border: 1px solid #d7e2ef;
+  background: #ffffff;
+  color: #40546f;
 }
 
-.monitor-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.4);
+.primary-action {
+  border: 1px solid #2f69d9;
+  background: #2f6cf6;
+  color: #ffffff;
 }
 
-.monitor-dot--pulse {
-  background: var(--accent);
-  box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.32);
-  animation: pulse 1.6s ease-out infinite;
+.outline-btn:disabled,
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
-.monitor-meta {
-  color: var(--ink-soft);
-  font-size: 0.9rem;
+.inline-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
-.monitor-band-body {
+.flow-panel {
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  gap: 18px;
+  gap: 14px;
+  padding: 14px;
+  margin-top: 16px;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
-.monitor-band-summary,
-.monitor-timeline {
-  display: grid;
-  gap: 12px;
-}
-
-.monitor-band-copy,
-.monitor-band-footnote,
-.monitor-timeline-label,
-.monitor-event-copy,
-.candidate-processing {
-  color: var(--ink-soft);
-}
-
-.monitor-band-copy,
-.monitor-event-copy,
-.candidate-processing {
-  line-height: 1.6;
-}
-
-.monitor-band-footnote,
-.monitor-timeline-label,
-.monitor-event-time {
-  font-size: 0.86rem;
-}
-
-.monitor-timeline-list {
-  display: grid;
+.flow-panel-head,
+.flow-panel-title,
+.monitor-meta,
+.monitor-event-head {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
+.flow-panel-head {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flow-panel-title {
+  align-items: center;
+  color: #17253d;
+  font-weight: 800;
+}
+
+.monitor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #8da0b8;
+}
+
+.monitor-dot--pulse {
+  background: #2f6cf6;
+  box-shadow: 0 0 0 0 rgba(47, 108, 246, 0.28);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+.monitor-meta,
+.monitor-timeline-label,
+.monitor-event-time {
+  color: #7a8799;
+  font-size: 12px;
+}
+
+.monitor-timeline,
+.monitor-timeline-list,
+.flow-copy,
+.upload-item,
+.candidate-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.monitor-event-copy,
+.flow-text,
+.candidate-summary,
+.candidate-processing,
+.empty-state,
+.upload-note {
+  line-height: 1.6;
+}
+
 .monitor-event {
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(20, 33, 61, 0.06);
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf2f8;
 }
 
 .flow-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
 }
 
-.flow-copy {
+.flow-copy,
+.flow-progress-card {
   display: grid;
+  align-content: start;
   gap: 12px;
+  min-height: 118px;
+  padding: 14px;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+  background: #f7faff;
 }
 
-.flow-text {
-  margin: 0;
-  color: var(--ink-soft);
-  line-height: 1.6;
+.flow-card-title {
+  color: #40546f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.flow-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #66758a;
+  font-size: 13px;
+}
+
+.flow-status-row strong {
+  color: #17253d;
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.flow-copy :deep(.el-progress-bar__outer),
+.flow-progress-card :deep(.el-progress-bar__outer) {
+  background-color: #e6ebf2;
+}
+
+.flow-copy :deep(.el-progress-bar__inner),
+.flow-progress-card :deep(.el-progress-bar__inner) {
+  background-color: #2f6cf6;
 }
 
 .flow-steps {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .flow-step {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 12px;
-  padding: 16px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(20, 33, 61, 0.06);
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
 .flow-step--active {
-  border-color: rgba(14, 116, 144, 0.18);
-  box-shadow: 0 14px 32px rgba(14, 116, 144, 0.08);
+  border-color: #cfe0f8;
+  background: #f7faff;
 }
 
 .flow-step--done {
-  background: rgba(232, 245, 235, 0.82);
+  background: #f3faf7;
 }
 
 .flow-step-index {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  background: rgba(20, 33, 61, 0.08);
-  font-weight: 700;
+  background: #eef3f9;
+  color: #40546f;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .flow-step-title {
-  font-weight: 700;
+  color: #17253d;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.flow-step-copy,
-.upload-meta,
-.candidate-meta,
-.candidate-summary,
-.empty-state {
-  color: var(--ink-soft);
-}
-
-.flow-step-copy,
-.candidate-summary,
-.empty-state {
-  line-height: 1.6;
-}
-
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.file-input {
-  display: none;
+.flow-step-copy {
+  margin-top: 4px;
+  color: #66758a;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .info-banner,
-.system-strip {
-  padding: 14px 16px;
-  border-radius: 18px;
+.empty-state {
+  padding: 12px;
+  border-radius: 6px;
 }
 
 .info-banner {
-  background: rgba(15, 118, 110, 0.1);
-  color: var(--accent-strong);
+  background: #eef7ff;
+  color: #2568d8;
 }
 
-.system-strip {
+.upload-actions {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: 14px;
-  background: rgba(20, 33, 61, 0.04);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
 }
 
-.system-strip-label {
-  color: var(--ink-soft);
-  font-size: 0.84rem;
+.resume-upload {
+  min-width: 0;
 }
 
-.system-strip-value {
-  margin-top: 6px;
-  font-size: 1.04rem;
-  font-weight: 700;
+.resume-upload :deep(.el-upload) {
+  width: 100%;
 }
 
-.system-strip-copy {
-  color: var(--ink-soft);
-  line-height: 1.6;
+.resume-upload :deep(.el-upload-dragger) {
+  display: grid;
+  place-items: center;
+  min-height: 156px;
+  padding: 22px;
+  border: 1px dashed #b9c9df;
+  border-radius: 8px;
+  background: #f7faff;
+}
+
+.resume-upload :deep(.el-upload-dragger:hover) {
+  border-color: #2f6cf6;
+  background: #f2f7ff;
+}
+
+.resume-upload__icon {
+  color: #2f6cf6;
+  font-size: 34px;
+}
+
+.resume-upload__text {
+  margin-top: 8px;
+  color: #17253d;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.resume-upload__tip {
+  margin-top: 8px;
+  color: #66758a;
+  font-size: 12px;
 }
 
 .upload-list,
 .candidate-list {
   display: grid;
-  gap: 14px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 14px;
+  min-width: 0;
 }
 
 .upload-item,
 .candidate-item {
-  padding: 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(20, 33, 61, 0.07);
+  padding: 12px 0;
+  border-bottom: 1px solid #edf2f8;
 }
 
-.upload-item {
-  display: grid;
-  gap: 14px;
+.upload-head {
+  align-items: flex-start;
 }
 
+.upload-head strong,
+.candidate-head strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #17253d;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-meta,
+.candidate-meta,
+.candidate-summary,
+.candidate-processing,
 .upload-note {
-  color: var(--ink-soft);
-  line-height: 1.6;
+  font-size: 13px;
 }
 
-.upload-step-chip {
-  padding: 7px 10px;
+.upload-step-chip,
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: rgba(20, 33, 61, 0.06);
-  color: var(--ink-soft);
-  font-size: 0.82rem;
+  background: #f1f4f8;
+  color: #65758b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .upload-step-chip--running {
-  background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  background: #eaf2ff;
+  color: #2568d8;
 }
 
 .upload-step-chip--succeeded {
-  background: rgba(15, 118, 110, 0.12);
-  color: var(--accent-strong);
+  background: #eaf8f1;
+  color: #23845d;
 }
 
 .upload-step-chip--failed {
-  background: rgba(220, 38, 38, 0.12);
-  color: var(--danger);
-}
-
-.candidate-processing {
-  font-size: 0.92rem;
+  background: #fff0f0;
+  color: #c24141;
 }
 
 .candidate-item {
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .candidate-main {
-  display: grid;
-  gap: 12px;
+  flex: 1;
 }
 
 .candidate-head {
@@ -809,24 +915,26 @@ onBeforeUnmount(() => {
 .tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tag-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(20, 33, 61, 0.06);
-  color: var(--ink-soft);
-  font-size: 0.84rem;
+  gap: 8px;
 }
 
 .empty-state {
-  padding: 20px;
-  border-radius: 18px;
-  background: rgba(20, 33, 61, 0.04);
+  background: #f7f9fc;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
+  .task-detail-grid,
+  .flow-summary,
+  .flow-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
   .page-head,
   .panel-head,
   .upload-head,
@@ -836,27 +944,19 @@ onBeforeUnmount(() => {
     align-items: flex-start;
     flex-direction: column;
   }
-
-  .flow-summary,
-  .monitor-band-body,
-  .system-strip,
-  .metric-grid,
-  .flow-steps {
-    grid-template-columns: 1fr;
-  }
 }
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.28);
+    box-shadow: 0 0 0 0 rgba(47, 108, 246, 0.28);
   }
 
   70% {
-    box-shadow: 0 0 0 12px rgba(15, 118, 110, 0);
+    box-shadow: 0 0 0 10px rgba(47, 108, 246, 0);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0);
+    box-shadow: 0 0 0 0 rgba(47, 108, 246, 0);
   }
 }
 </style>

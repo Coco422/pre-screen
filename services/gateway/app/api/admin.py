@@ -1,249 +1,217 @@
-from copy import deepcopy
-import os
-from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile, status
+from pydantic import BaseModel, Field
 
-from services.resume.app.domain.models import ResumeParseResult
-from services.resume.app.parsing.privacy import mask_email, mask_phone
-from services.resume.app.repositories.resume_repository import resume_repository
+from services.gateway.app.domain.demo_store import gateway_demo_store
 
 router = APIRouter(prefix="/admin", tags=["gateway-admin"])
 
-_CANDIDATES = [
-    {
-        "id": "c-001",
-        "name": "郭子贤",
-        "role": "全栈开发工程师",
-        "city": "深圳",
-        "status": "待发卷",
-        "quality": "高",
-        "summary": "简历文本层完整，系统已提取邮箱、技能与项目亮点，建议直接生成考卷草稿。",
-        "skills": ["Python", "C++", "Vue"],
-    },
-    {
-        "id": "c-002",
-        "name": "梁承与",
-        "role": "前端实习生",
-        "city": "广州",
-        "status": "待审核",
-        "quality": "中",
-        "summary": "第二页低文本覆盖，已触发多模态补读，建议 HR 先检查项目细节后发卷。",
-        "skills": ["Vue", "TypeScript", "工程化"],
-    },
-    {
-        "id": "c-003",
-        "name": "沈昊天",
-        "role": "前端开发工程师",
-        "city": "深圳",
-        "status": "已开考",
-        "quality": "高",
-        "summary": "候选人已进入考试会话，自动保存与心跳正常，暂无异常事件。",
-        "skills": ["JavaScript", "Vue", "浏览器"],
-    },
-]
 
-_CANDIDATE_DETAILS = {
-    "c-001": {
-        "id": "c-001",
-        "name": "郭子贤",
-        "role": "全栈开发工程师",
-        "email": "15099970619@163.com",
-        "city": "深圳",
-        "skills": ["Python", "Java", "C++", "Vue"],
-        "project_summary": "做过权限管理、接口编排和前后端联调，整体表达清晰，技术栈跨度较大。",
-        "parse_metrics": {
-            "first_page_characters": 1740,
-            "multimodal_pages": 1,
-            "confidence": "高",
-        },
-        "review_notes": [
-            "第 2 页低文本覆盖，已触发多模态补读。",
-            "基础信息字段完整，暂无人工修正。",
-        ],
-        "next_actions": [
-            {"label": "生成考卷草稿", "target": "/admin/papers/p-001"},
-            {"label": "修正候选人画像", "target": "/admin/candidates/c-001/edit"},
-        ],
-    }
-}
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
-_PAPER_DRAFTS = {
-    "p-001": {
-        "paper_id": "p-001",
-        "title": "前端实习生考卷草稿",
-        "mix": {
-            "base_info": 1,
-            "objective": 4,
-            "subjective": 2,
-            "coding": 1,
-        },
-        "questions": [
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    department: str
+    city: str
+    jd_text: str
+    tags: list[str] = Field(default_factory=list)
+    template_config: dict
+    duration_minutes: int = Field(default=90, ge=1, le=240)
+
+
+class UpdateCandidateRequest(BaseModel):
+    name: str | None = None
+    role: str | None = None
+    email: str | None = None
+    city: str | None = None
+    phone: str | None = None
+    skills: list[str] | None = None
+    hobbies: list[str] | None = None
+    height_cm: int | None = None
+    weight_kg: int | None = None
+    available_in_days: int | None = None
+    project_summary: str | None = None
+    review_note: str | None = None
+    review_notes: list[str] | None = None
+    projects: list[dict] | None = None
+
+
+class UpdatePaperRequest(BaseModel):
+    title: str | None = None
+    duration_minutes: int | None = Field(default=None, ge=1, le=240)
+    questions: list[dict] | None = None
+
+
+class PublishPaperRequest(BaseModel):
+    duration_minutes: int | None = Field(default=None, ge=1, le=240)
+
+
+def _extract_bearer_token(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token.")
+    return authorization.split(" ", 1)[1]
+
+
+def _translate_store_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, PermissionError):
+        return HTTPException(status_code=403, detail=str(exc))
+    if isinstance(exc, LookupError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    return HTTPException(status_code=500, detail="Gateway demo store error.")
+
+
+@router.post("/session/login")
+async def login(request: LoginRequest) -> dict:
+    try:
+        return gateway_demo_store.login(request.username, request.password)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+@router.get("/session/me")
+async def current_user(authorization: Annotated[str | None, Header()] = None) -> dict:
+    try:
+        return gateway_demo_store.get_current_user(_extract_bearer_token(authorization))
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+@router.get("/dashboard")
+async def get_dashboard() -> dict:
+    return gateway_demo_store.get_dashboard()
+
+
+@router.get("/tasks")
+async def list_tasks(status: str | None = None, keyword: str | None = None) -> dict:
+    return gateway_demo_store.list_tasks(status=status, keyword=keyword)
+
+
+@router.post("/tasks", status_code=status.HTTP_201_CREATED)
+async def create_task(request: CreateTaskRequest) -> dict:
+    return gateway_demo_store.create_task(request.model_dump())
+
+
+@router.get("/tasks/{task_id}")
+async def get_task(task_id: str) -> dict:
+    try:
+        return gateway_demo_store.get_task(task_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+@router.post("/tasks/{task_id}/uploads", status_code=status.HTTP_202_ACCEPTED)
+async def create_uploads(task_id: str, files: Annotated[list[UploadFile], File()]) -> dict:
+    uploaded_items = []
+    for file in files:
+        uploaded_items.append(
             {
-                "type": "基础信息",
-                "title": "补充基础信息",
-                "score": 0,
-                "description": "填写身高、体重、爱好和可到岗时间。",
-            },
-            {
-                "type": "客观题",
-                "title": "Vue 响应式原理基础",
-                "score": 5,
-                "description": "根据候选人简历中的 Vue 信号优先保留。",
-            },
-            {
-                "type": "客观题",
-                "title": "TypeScript 类型系统",
-                "score": 5,
-                "description": "覆盖联合类型、泛型和类型收窄。",
-            },
-            {
-                "type": "主观题",
-                "title": "请复盘一个你最熟悉的项目",
-                "score": 15,
-                "description": "聚焦完整度、角色边界和复盘深度。",
-            },
-            {
-                "type": "代码题",
-                "title": "实现一个数组去重函数",
-                "score": 50,
-                "description": "支持多语言，后续将接 Judge Bridge 判题。",
-            },
-        ],
-    }
-}
+                "filename": file.filename or "resume.pdf",
+                "content": await file.read(),
+            }
+        )
+    try:
+        return gateway_demo_store.create_uploads(task_id, uploaded_items)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+@router.get("/uploads/{upload_id}")
+async def get_upload(upload_id: str) -> dict:
+    try:
+        return gateway_demo_store.get_upload(upload_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
 @router.get("/candidates")
-async def list_candidates() -> dict:
-    parsed = resume_repository.list_parse_results()
-    if parsed:
-        items = [_candidate_card_from_parse_result(result) for result in parsed]
-        return {"items": items, "total": len(items)}
-    return {"items": deepcopy(_CANDIDATES), "total": len(_CANDIDATES)}
+async def list_candidates(
+    task_id: str | None = None,
+    role: str | None = None,
+    status: str | None = None,
+    pending_review: bool | None = None,
+    paper_sent: bool | None = None,
+    paper_status: str | None = None,
+    risk_level: str | None = None,
+    keyword: str | None = None,
+    sort_by: str | None = None,
+    order: str | None = None,
+) -> dict:
+    return gateway_demo_store.list_candidates(
+        task_id=task_id,
+        role=role,
+        status=status,
+        pending_review=pending_review,
+        paper_sent=paper_sent,
+        paper_status=paper_status,
+        risk_level=risk_level,
+        keyword=keyword,
+        sort_by=sort_by,
+        order=order,
+    )
 
 
 @router.get("/candidates/{candidate_id}")
-async def get_candidate(candidate_id: str, include_pii: bool = False) -> dict:
-    parsed = resume_repository.get_parse_result(candidate_id)
-    if parsed is not None:
-        return _candidate_detail_from_parse_result(
-            parsed,
-            include_pii=include_pii and os.environ.get("APP_ENV", "local") == "local",
-        )
-    candidate = _CANDIDATE_DETAILS.get(candidate_id)
-    if candidate is None:
-        raise HTTPException(status_code=404, detail="Candidate not found.")
-    return deepcopy(candidate)
+async def get_candidate(candidate_id: str) -> dict:
+    try:
+        return gateway_demo_store.get_candidate(candidate_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
-@router.get("/candidates/{candidate_id}/avatar")
-async def get_candidate_avatar(candidate_id: str) -> FileResponse:
-    parsed = resume_repository.get_parse_result(candidate_id)
-    if parsed is None or not parsed.avatar.image_path:
-        raise HTTPException(status_code=404, detail="Candidate avatar not found.")
-    return FileResponse(parsed.avatar.image_path)
+@router.put("/candidates/{candidate_id}")
+async def update_candidate(candidate_id: str, request: UpdateCandidateRequest) -> dict:
+    try:
+        return gateway_demo_store.update_candidate(candidate_id, request.model_dump())
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
-@router.get("/resume-batches/latest/analysis")
-async def get_latest_resume_batch_analysis() -> dict:
-    latest = resume_repository.latest_batch_result()
-    if latest is None:
-        return {
-            "batch_id": None,
-            "analysis_markdown": (
-                "# 简历批量共性分析\n\n"
-                "暂无真实批量解析结果。上传或运行批处理后，这里会展示技能矩阵、共性主题和复核提示。\n"
-            ),
-        }
-    return {
-        "batch_id": latest.batch_id,
-        "output_dir": latest.output_dir,
-        "analysis_markdown": latest.analysis_markdown,
-    }
+@router.post("/candidates/{candidate_id}/papers/generate", status_code=status.HTTP_201_CREATED)
+async def generate_paper(candidate_id: str) -> dict:
+    try:
+        return gateway_demo_store.generate_paper(candidate_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
 @router.get("/papers/{paper_id}")
 async def get_paper(paper_id: str) -> dict:
-    paper = _PAPER_DRAFTS.get(paper_id)
-    if paper is None:
-        raise HTTPException(status_code=404, detail="Paper draft not found.")
-    return deepcopy(paper)
+    try:
+        return gateway_demo_store.get_paper(paper_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
-def _candidate_card_from_parse_result(result: ResumeParseResult) -> dict:
-    profile = result.profile
-    warnings = result.metadata.get("warnings", [])
-    return {
-        "id": result.file_id,
-        "name": profile.get("name") or result.candidate_name,
-        "role": profile.get("role") or _role_from_filename(result.original_filename),
-        "city": profile.get("city") or "未识别",
-        "status": "待审核" if warnings else "待发卷",
-        "quality": _parse_quality(result),
-        "summary": profile.get("summary") or "已完成简历解析，等待 HR 复核后生成考卷草稿。",
-        "skills": profile.get("skills", [])[:8],
-    }
+@router.put("/papers/{paper_id}")
+async def update_paper(paper_id: str, request: UpdatePaperRequest) -> dict:
+    try:
+        return gateway_demo_store.update_paper(paper_id, request.model_dump())
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
-def _candidate_detail_from_parse_result(result: ResumeParseResult, *, include_pii: bool) -> dict:
-    profile = result.profile
-    phone = profile.get("phone")
-    email = profile.get("email")
-    if not include_pii:
-        phone = mask_phone(phone)
-        email = mask_email(email)
-
-    first_page_characters = 0
-    multimodal_pages = 0
-    for item in profile.get("page_metrics", []):
-        if item.get("page_number") == 1:
-            first_page_characters = item.get("text_chars", 0)
-        if item.get("needs_multimodal"):
-            multimodal_pages += 1
-
-    avatar_url = None
-    if result.avatar.status == "found" and result.avatar.image_path and Path(result.avatar.image_path).exists():
-        avatar_url = f"/admin/candidates/{result.file_id}/avatar"
-
-    return {
-        "id": result.file_id,
-        "name": profile.get("name") or result.candidate_name,
-        "role": profile.get("role") or _role_from_filename(result.original_filename),
-        "phone": phone,
-        "email": email,
-        "city": profile.get("city") or "未识别",
-        "skills": profile.get("skills", [])[:12],
-        "project_summary": profile.get("summary") or "已完成简历解析，等待人工复核。",
-        "markdown_preview": result.markdown,
-        "avatar_url": avatar_url,
-        "parse_metrics": {
-            "first_page_characters": first_page_characters,
-            "multimodal_pages": multimodal_pages,
-            "confidence": _parse_quality(result),
-        },
-        "review_notes": result.metadata.get("warnings", [])[:8] or ["基础信息字段已提取，请复核项目贡献深度。"],
-        "next_actions": [
-            {"label": "生成考卷草稿", "target": "/admin/papers/p-001"},
-            {"label": "查看原始 Markdown", "target": f"/admin/candidates/{result.file_id}"},
-        ],
-    }
+@router.post("/papers/{paper_id}/publish", status_code=status.HTTP_201_CREATED)
+async def publish_paper(paper_id: str, request: PublishPaperRequest) -> dict:
+    try:
+        return gateway_demo_store.publish_paper(paper_id, request.duration_minutes)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
 
 
-def _parse_quality(result: ResumeParseResult) -> str:
-    warnings = result.metadata.get("warnings", [])
-    text_length = result.metadata.get("text_length", 0)
-    if not warnings and text_length >= 1200:
-        return "高"
-    if text_length >= 800:
-        return "中"
-    return "低"
+@router.get("/results")
+async def list_results(status: str | None = None, task_id: str | None = None) -> dict:
+    return gateway_demo_store.list_results(status=status, task_id=task_id)
 
 
-def _role_from_filename(filename: str) -> str:
-    if "前端" in filename:
-        return "前端开发工程师"
-    if "全栈" in filename:
-        return "全栈开发工程师"
-    return "技术岗"
+@router.get("/results/{result_id}")
+async def get_result(result_id: str) -> dict:
+    try:
+        return gateway_demo_store.get_result(result_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc

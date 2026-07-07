@@ -11,6 +11,7 @@ class AppSettings(BaseSettings):
     minio_access_key: str
     minio_secret_key: str
     minio_bucket_resumes: str
+    ai_api_key: str | None = None
     ai_base_url: str
     ai_model: str
     ai_api_key: str = ""

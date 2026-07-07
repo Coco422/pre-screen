@@ -13,6 +13,15 @@ export const useExamSessionStore = defineStore("exam-session", {
     expiresAt: ""
   }),
   actions: {
+    reset() {
+      this.sessionToken = "";
+      this.activeQuestionId = "";
+      this.answers = {};
+      this.lastHeartbeatAt = "";
+      this.riskEvents = [];
+      this.startedAt = "";
+      this.expiresAt = "";
+    },
     upsertDraftAnswer(questionId: string, value: DraftAnswer) {
       this.answers[questionId] = value;
     },

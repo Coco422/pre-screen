@@ -1,210 +1,227 @@
 <template>
-  <section class="glass-card page-card">
-    <div class="grid-two list-hero">
-      <div>
-        <div class="pill">Pipeline Snapshot</div>
-        <h2 class="hero-title">把 PDF、画像、考卷草稿放到一个工作台里。</h2>
-        <p class="hero-copy">
-          面向 HR 的第一页不是表格堆砌，而是一张能看出优先级、解析质量和待处理动作的面板。
-        </p>
-      </div>
-      <div class="grid-three">
-        <article class="metric-tile" v-for="metric in metrics" :key="metric.label">
-          <div class="metric-value">{{ metric.value }}</div>
-          <div class="metric-label">{{ metric.label }}</div>
-        </article>
-      </div>
+  <section class="candidate-page">
+    <div class="candidate-page__head">
+      <h2 class="section-title">候选人列表</h2>
     </div>
 
-    <div class="toolbar">
-      <input class="soft-input" placeholder="搜索候选人 / 邮箱 / 岗位模板" />
-      <select class="soft-select">
-        <option>全部状态</option>
-        <option>待解析</option>
-        <option>待发卷</option>
-        <option>已开考</option>
-      </select>
+    <div class="candidate-page__filters">
+      <el-select v-model="roleFilter" clearable placeholder="全部岗位">
+        <el-option label="全部岗位" value="" />
+        <el-option v-for="role in roleOptions" :key="role" :label="role" :value="role" />
+      </el-select>
+
+      <el-select v-model="statusFilter" clearable placeholder="全部状态">
+        <el-option label="全部状态" value="" />
+        <el-option label="待审核" value="待审核" />
+        <el-option label="待发卷" value="待发卷" />
+        <el-option label="待开考" value="待开考" />
+        <el-option label="已开考" value="已开考" />
+        <el-option label="已交卷" value="已交卷" />
+        <el-option label="已完成筛选" value="已完成筛选" />
+      </el-select>
+
+      <el-select v-model="pendingReviewFilter" clearable placeholder="全部审核">
+        <el-option label="全部审核" value="" />
+        <el-option label="待审核" value="true" />
+        <el-option label="非待审核" value="false" />
+      </el-select>
+
+      <el-select v-model="paperSentFilter" clearable placeholder="全部发卷">
+        <el-option label="全部发卷" value="" />
+        <el-option label="已发卷" value="true" />
+        <el-option label="未发卷" value="false" />
+      </el-select>
+
+      <el-input v-model="keyword" clearable placeholder="搜索候选人 / 岗位 / 城市" />
     </div>
 
-    <section class="analysis-panel">
-      <div class="analysis-head">
-        <div>
-          <div class="pill">Batch Analysis</div>
-          <h3>简历批量共性分析</h3>
-        </div>
-        <span v-if="batchAnalysis.batchId" class="tag-chip">{{ batchAnalysis.batchId }}</span>
-      </div>
-      <pre>{{ batchAnalysis.analysisMarkdown }}</pre>
-    </section>
+    <div v-if="loading" class="candidate-page__state">正在同步候选人列表...</div>
+    <div v-else-if="loadError" class="candidate-page__state candidate-page__state--error">{{ loadError }}</div>
 
-    <div class="candidate-grid">
-      <article v-if="loading" class="candidate-card candidate-card--muted">
-        <div class="candidate-name">正在同步候选人数据...</div>
-        <p class="section-copy">Gateway 已接入，列表会优先读取后端返回，异常时自动回退到本地样例。</p>
-      </article>
-      <article class="candidate-card" v-for="candidate in candidates" :key="candidate.id">
-        <div class="candidate-top">
-          <div>
-            <div class="candidate-name">{{ candidate.name }}</div>
-            <div class="candidate-meta">{{ candidate.role }} · {{ candidate.city }}</div>
-          </div>
-          <span class="pill status-pill">{{ candidate.status }}</span>
-        </div>
-        <p class="section-copy">{{ candidate.summary }}</p>
-        <div class="tag-row">
-          <span class="tag-chip" v-for="tag in candidate.skills" :key="tag">{{ tag }}</span>
-        </div>
-        <div class="candidate-footer">
-          <span>解析质量 {{ candidate.quality }}</span>
-          <RouterLink class="secondary-btn inline-btn" :to="`/admin/candidates/${candidate.id}`">查看详情</RouterLink>
-        </div>
-      </article>
-    </div>
+    <el-table v-else :data="candidates" class="candidate-page__table" empty-text="没有符合筛选条件的候选人。" row-key="id" stripe>
+      <el-table-column label="姓名" prop="name" />
+      <el-table-column label="岗位" prop="role" />
+      <el-table-column label="PDF 上传时间" min-width="150">
+        <template #default="{ row }">
+          {{ formatDateTime(row.resumeUploadedAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="解析状态" min-width="110">
+        <template #default="{ row }">
+          {{ parseStatusLabel(row.resumeParseStatus) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="筛选状态" min-width="120">
+        <template #default="{ row }">
+          <el-tag :type="statusTypeMap[row.screeningStatus] ?? 'info'">{{ row.screeningStatus }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="风险标记" min-width="110">
+        <template #default="{ row }">
+          <el-tag :type="riskTypeMap[row.riskLevel] ?? 'info'">{{ row.riskFlag }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="更新时间" min-width="150">
+        <template #default="{ row }">
+          {{ formatDateTime(row.updatedAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="下一步" width="120">
+        <template #default="{ row }">
+          <RouterLink class="candidate-page__action" :to="row.nextAction.target">{{ row.nextAction.label }}</RouterLink>
+        </template>
+      </el-table-column>
+    </el-table>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { RouterLink } from "vue-router";
+import { computed, ref, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 
-import { loadCandidates, loadLatestResumeBatchAnalysis, type BatchAnalysis, type CandidateCard } from "../../lib/gateway";
+import { loadCandidates, type CandidateCard, type CandidateListFilters } from "../../lib/gateway";
 
+const route = useRoute();
 const loading = ref(true);
+const loadError = ref("");
+const keyword = ref("");
+const roleFilter = ref("");
+const statusFilter = ref("");
+const pendingReviewFilter = ref("");
+const paperSentFilter = ref("");
 const candidates = ref<CandidateCard[]>([]);
-const batchAnalysis = ref<BatchAnalysis>({
-  batchId: null,
-  analysisMarkdown: "# 简历批量共性分析\n\n正在同步批量分析..."
-});
+let latestRequestId = 0;
 
-const metrics = computed(() => [
-  { label: "今日待处理简历", value: String(candidates.value.length || 0) },
-  {
-    label: "待审核考卷草稿",
-    value: String(candidates.value.filter((candidate) => candidate.status !== "已开考").length || 0)
+const statusTypeMap: Record<string, "success" | "warning" | "primary" | "info" | "danger"> = {
+  待审核: "warning",
+  待发卷: "primary",
+  待开考: "info",
+  已开考: "danger",
+  已交卷: "success",
+  已完成筛选: "success"
+};
+
+const riskTypeMap: Record<string, "success" | "warning" | "primary" | "info" | "danger"> = {
+  low: "info",
+  medium: "warning",
+  high: "danger"
+};
+
+const roleOptions = computed(() => Array.from(new Set(candidates.value.map((candidate) => candidate.role))).filter(Boolean));
+
+const currentTaskId = computed(() => readQueryString("taskId") || readQueryString("task_id"));
+
+function readQueryString(key: string) {
+  const value = route.query[key];
+  return typeof value === "string" ? value : "";
+}
+
+function parseBooleanFilter(value: string): boolean | undefined {
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return undefined;
+}
+
+function syncFiltersFromRoute() {
+  roleFilter.value = readQueryString("role");
+  statusFilter.value = readQueryString("status");
+  pendingReviewFilter.value = readQueryString("pendingReview") || readQueryString("pending_review");
+  paperSentFilter.value = readQueryString("paperSent") || readQueryString("paper_sent");
+  keyword.value = readQueryString("keyword");
+}
+
+function buildFilters(): CandidateListFilters {
+  return {
+    taskId: currentTaskId.value || undefined,
+    role: roleFilter.value || undefined,
+    status: statusFilter.value || undefined,
+    pendingReview: parseBooleanFilter(pendingReviewFilter.value),
+    paperSent: parseBooleanFilter(paperSentFilter.value),
+    keyword: keyword.value.trim() || undefined,
+    sortBy: statusFilter.value === "已交卷" ? "updated_at" : "resume_uploaded_at",
+    order: statusFilter.value === "已交卷" ? "desc" : "asc"
+  };
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+
+  const getPart = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${getPart("month")}-${getPart("day")} ${getPart("hour")}:${getPart("minute")}`;
+}
+
+function parseStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    queued: "排队中",
+    parsing: "解析中",
+    parsed: "已解析",
+    failed: "解析失败",
+    missing: "未上传"
+  };
+  return labels[status] ?? status;
+}
+
+async function loadCandidateList() {
+  const requestId = ++latestRequestId;
+  loading.value = true;
+
+  try {
+    const nextCandidates = await loadCandidates(buildFilters());
+    if (requestId !== latestRequestId) {
+      return;
+    }
+
+    candidates.value = nextCandidates;
+    loadError.value = "";
+  } catch {
+    if (requestId !== latestRequestId) {
+      return;
+    }
+
+    loadError.value = "候选人列表加载失败，等待后端接口恢复。";
+    candidates.value = [];
+  } finally {
+    if (requestId === latestRequestId) {
+      loading.value = false;
+    }
+  }
+}
+
+syncFiltersFromRoute();
+
+watch(
+  () => route.query,
+  () => {
+    syncFiltersFromRoute();
   },
-  {
-    label: "自动解析置信高",
-    value: candidates.value.length
-      ? `${Math.round((candidates.value.filter((candidate) => candidate.quality === "高").length / candidates.value.length) * 100)}%`
-      : "0%"
-  }
-]);
+  { deep: true }
+);
 
-onMounted(async () => {
-  const [candidateItems, analysis] = await Promise.all([loadCandidates(), loadLatestResumeBatchAnalysis()]);
-  candidates.value = candidateItems;
-  batchAnalysis.value = analysis;
-  loading.value = false;
-});
+watch(
+  [currentTaskId, roleFilter, statusFilter, pendingReviewFilter, paperSentFilter, keyword],
+  () => {
+    void loadCandidateList();
+  },
+  { immediate: true }
+);
 </script>
-
-<style scoped>
-.page-card {
-  padding: 28px;
-}
-
-.list-hero {
-  align-items: center;
-}
-
-.toolbar {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 16px;
-  margin: 28px 0;
-}
-
-.candidate-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.analysis-panel {
-  margin: 0 0 24px;
-  padding: 18px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(20, 33, 61, 0.07);
-}
-
-.analysis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.analysis-head h3 {
-  margin: 8px 0 0;
-}
-
-.analysis-panel pre {
-  max-height: 260px;
-  overflow: auto;
-  margin: 14px 0 0;
-  white-space: pre-wrap;
-  color: var(--ink-soft);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.86rem;
-  line-height: 1.6;
-}
-
-.candidate-card {
-  padding: 20px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(20, 33, 61, 0.07);
-}
-
-.candidate-card--muted {
-  opacity: 0.75;
-}
-
-.candidate-top,
-.candidate-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.candidate-name {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.candidate-meta,
-.candidate-footer {
-  color: var(--ink-soft);
-  font-size: 0.92rem;
-}
-
-.tag-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 16px 0;
-}
-
-.tag-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(20, 33, 61, 0.06);
-  color: var(--ink-soft);
-  font-size: 0.84rem;
-}
-
-.inline-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@media (max-width: 960px) {
-  .toolbar,
-  .candidate-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

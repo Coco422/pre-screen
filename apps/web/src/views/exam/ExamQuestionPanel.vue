@@ -1,14 +1,24 @@
 <template>
   <article class="glass-card question-panel">
     <header class="question-panel__head">
-      <div>
-        <div class="question-panel__type">{{ question.typeLabel }}</div>
+      <div class="question-panel__headline">
+        <div class="question-panel__eyebrow">
+          <span class="question-panel__type">{{ question.typeLabel }}</span>
+          <span class="question-panel__progress">{{ progressLabel }}</span>
+        </div>
         <h3>{{ question.title }}</h3>
       </div>
       <span class="pill">{{ question.score }} 分</span>
     </header>
 
     <p class="section-copy">{{ question.description }}</p>
+
+    <div class="question-status-bar">
+      <span>当前状态：{{ completionLabel }}</span>
+      <span>自动保存：{{ autosaveLabel }}</span>
+    </div>
+
+    <p class="question-hint">{{ helperCopy }}</p>
 
     <div v-if="question.mode === 'base_info'" class="field-grid">
       <label v-for="field in question.fields" :key="field" class="field-item">
@@ -59,6 +69,9 @@ const props = defineProps<{
     options?: string[];
   };
   modelValue?: Record<string, unknown>;
+  progressLabel?: string;
+  completionLabel?: string;
+  autosaveLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -66,19 +79,28 @@ const emit = defineEmits<{
 }>();
 
 const stringValue = (field: string) => String(props.modelValue?.[field] ?? "");
-const selectedOption = computed(() => String(props.modelValue?.value ?? ""));
-const textValue = computed(() => String(props.modelValue?.value ?? ""));
+const selectedOption = computed(() => String(props.modelValue?.answer ?? ""));
+const textValue = computed(() => String(props.modelValue?.answer_text ?? ""));
+const helperCopy = computed(() => {
+  if (props.question.mode === "base_info") {
+    return "这部分信息会随填写自动保存，建议一次把字段补齐，避免遗漏基础资料。";
+  }
+  if (props.question.mode === "objective") {
+    return "点击选项即可记录答案；切换答案后系统会自动更新保存状态。";
+  }
+  return "主观题支持自由作答，输入过程中系统会自动保存，不需要手动提交本题。";
+});
 
 function updateField(field: string, value: string) {
   emit("update:modelValue", { ...(props.modelValue ?? {}), [field]: value });
 }
 
 function selectOption(option: string) {
-  emit("update:modelValue", { value: option });
+  emit("update:modelValue", { answer: option });
 }
 
 function updateText(value: string) {
-  emit("update:modelValue", { value });
+  emit("update:modelValue", { answer_text: value });
 }
 </script>
 
@@ -94,10 +116,45 @@ function updateText(value: string) {
   gap: 16px;
 }
 
+.question-panel__headline {
+  display: grid;
+  gap: 10px;
+}
+
+.question-panel__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .question-panel__type {
   color: var(--accent-strong);
   font-weight: 700;
   font-size: 0.85rem;
+}
+
+.question-panel__progress {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.question-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(20, 33, 61, 0.05);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.question-hint {
+  margin: 14px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
 }
 
 .field-grid {
@@ -126,6 +183,11 @@ function updateText(value: string) {
   border-radius: 999px;
   padding: 12px 16px;
   cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.choice-pill:hover {
+  transform: translateY(-1px);
 }
 
 .choice-pill--active {
@@ -137,6 +199,10 @@ function updateText(value: string) {
 @media (max-width: 720px) {
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .question-panel__head {
+    flex-direction: column;
   }
 }
 </style>

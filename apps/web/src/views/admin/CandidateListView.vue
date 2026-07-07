@@ -26,6 +26,17 @@
       </select>
     </div>
 
+    <section class="analysis-panel">
+      <div class="analysis-head">
+        <div>
+          <div class="pill">Batch Analysis</div>
+          <h3>简历批量共性分析</h3>
+        </div>
+        <span v-if="batchAnalysis.batchId" class="tag-chip">{{ batchAnalysis.batchId }}</span>
+      </div>
+      <pre>{{ batchAnalysis.analysisMarkdown }}</pre>
+    </section>
+
     <div class="candidate-grid">
       <article v-if="loading" class="candidate-card candidate-card--muted">
         <div class="candidate-name">正在同步候选人数据...</div>
@@ -56,10 +67,14 @@
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 
-import { loadCandidates, type CandidateCard } from "../../lib/gateway";
+import { loadCandidates, loadLatestResumeBatchAnalysis, type BatchAnalysis, type CandidateCard } from "../../lib/gateway";
 
 const loading = ref(true);
 const candidates = ref<CandidateCard[]>([]);
+const batchAnalysis = ref<BatchAnalysis>({
+  batchId: null,
+  analysisMarkdown: "# 简历批量共性分析\n\n正在同步批量分析..."
+});
 
 const metrics = computed(() => [
   { label: "今日待处理简历", value: String(candidates.value.length || 0) },
@@ -76,7 +91,9 @@ const metrics = computed(() => [
 ]);
 
 onMounted(async () => {
-  candidates.value = await loadCandidates();
+  const [candidateItems, analysis] = await Promise.all([loadCandidates(), loadLatestResumeBatchAnalysis()]);
+  candidates.value = candidateItems;
+  batchAnalysis.value = analysis;
   loading.value = false;
 });
 </script>
@@ -101,6 +118,36 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.analysis-panel {
+  margin: 0 0 24px;
+  padding: 18px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(20, 33, 61, 0.07);
+}
+
+.analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.analysis-head h3 {
+  margin: 8px 0 0;
+}
+
+.analysis-panel pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 14px 0 0;
+  white-space: pre-wrap;
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.6;
 }
 
 .candidate-card {

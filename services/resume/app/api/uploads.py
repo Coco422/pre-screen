@@ -1,4 +1,5 @@
 from uuid import uuid4
+from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
@@ -30,6 +31,9 @@ async def upload_resume(
     object_key = f"resumes/{upload_id}.pdf"
     content_type = file.content_type
     minio_store.put_pdf(object_key=object_key, content=content, content_type=content_type)
+    local_path = Path("tmp/resume-uploads") / f"{upload_id}.pdf"
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(content)
 
     upload = ResumeUpload(
         upload_id=upload_id,
@@ -38,12 +42,14 @@ async def upload_resume(
         object_key=object_key,
         content_type=content_type,
         size_bytes=len(content),
+        local_path=str(local_path),
     )
     resume_repository.save_upload(upload)
 
     return {
         "candidate_name": upload.candidate_name,
         "status": "accepted",
+        "file_id": upload.upload_id,
         "upload_id": upload.upload_id,
         "object_key": upload.object_key,
         "content_type": upload.content_type,

@@ -15,10 +15,13 @@ export type CandidateDetail = {
   id: string;
   name: string;
   role: string;
-  email: string;
+  phone?: string | null;
+  email: string | null;
   city: string;
   skills: string[];
   projectSummary: string;
+  markdownPreview?: string;
+  avatarUrl?: string | null;
   parseMetrics: {
     firstPageCharacters: number;
     multimodalPages: number;
@@ -26,6 +29,12 @@ export type CandidateDetail = {
   };
   reviewNotes: string[];
   nextActions: Array<{ label: string; target: string }>;
+};
+
+export type BatchAnalysis = {
+  batchId: string | null;
+  outputDir?: string;
+  analysisMarkdown: string;
 };
 
 export type PaperDraft = {
@@ -129,10 +138,13 @@ const candidateDetailFallback: CandidateDetail = {
   id: "c-001",
   name: "郭子贤",
   role: "全栈开发工程师",
+  phone: "150****0619",
   email: "15099970619@163.com",
   city: "深圳",
   skills: ["Python", "Java", "C++", "Vue"],
   projectSummary: "做过权限管理、接口编排和前后端联调，整体表达清晰，技术栈跨度较大。",
+  markdownPreview: "暂无真实 Markdown。上传并解析简历后，这里会展示页序保真的 Markdown 预览。",
+  avatarUrl: null,
   parseMetrics: {
     firstPageCharacters: 1740,
     multimodalPages: 1,
@@ -219,6 +231,16 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function apiUrl(path?: string | null): string | null {
+  if (!path) {
+    return null;
+  }
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) {
+    return path;
+  }
+  return `${API_BASE}${path}`;
+}
+
 async function requestJson<T>(path: string, init?: RequestInit, fallback?: T): Promise<T> {
   try {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -252,10 +274,13 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
     id: string;
     name: string;
     role: string;
-    email: string;
+    phone?: string | null;
+    email: string | null;
     city: string;
     skills: string[];
     project_summary: string;
+    markdown_preview?: string;
+    avatar_url?: string | null;
     parse_metrics: {
       first_page_characters: number;
       multimodal_pages: number;
@@ -267,10 +292,13 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
     id: candidateDetailFallback.id,
     name: candidateDetailFallback.name,
     role: candidateDetailFallback.role,
+    phone: candidateDetailFallback.phone,
     email: candidateDetailFallback.email,
     city: candidateDetailFallback.city,
     skills: candidateDetailFallback.skills,
     project_summary: candidateDetailFallback.projectSummary,
+    markdown_preview: candidateDetailFallback.markdownPreview,
+    avatar_url: candidateDetailFallback.avatarUrl,
     parse_metrics: {
       first_page_characters: candidateDetailFallback.parseMetrics.firstPageCharacters,
       multimodal_pages: candidateDetailFallback.parseMetrics.multimodalPages,
@@ -284,10 +312,13 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
     id: response.id,
     name: response.name,
     role: response.role,
+    phone: response.phone,
     email: response.email,
     city: response.city,
     skills: response.skills,
     projectSummary: response.project_summary,
+    markdownPreview: response.markdown_preview,
+    avatarUrl: apiUrl(response.avatar_url),
     parseMetrics: {
       firstPageCharacters: response.parse_metrics.first_page_characters,
       multimodalPages: response.parse_metrics.multimodal_pages,
@@ -295,6 +326,24 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
     },
     reviewNotes: response.review_notes,
     nextActions: response.next_actions
+  };
+}
+
+export async function loadLatestResumeBatchAnalysis(): Promise<BatchAnalysis> {
+  const response = await requestJson<{
+    batch_id: string | null;
+    output_dir?: string;
+    analysis_markdown: string;
+  }>("/admin/resume-batches/latest/analysis", undefined, {
+    batch_id: null,
+    analysis_markdown:
+      "# 简历批量共性分析\n\n暂无真实批量解析结果。上传或运行批处理后，这里会展示技能矩阵、共性主题和复核提示。\n"
+  });
+
+  return {
+    batchId: response.batch_id,
+    outputDir: response.output_dir,
+    analysisMarkdown: response.analysis_markdown
   };
 }
 

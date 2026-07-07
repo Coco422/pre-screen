@@ -22,3 +22,17 @@ class AIClient:
             temperature=0.1,
         )
         return response.choices[0].message.content or ""
+
+    def multimodal_completion(self, *, prompt: str, image_data_urls: list[str]) -> str:
+        content: list[dict] = [{"type": "text", "text": prompt}]
+        content.extend(
+            {"type": "image_url", "image_url": {"url": image_data_url}}
+            for image_data_url in image_data_urls
+        )
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[{"role": "user", "content": content}],
+            temperature=0.1,
+            response_format={"type": "json_object"},
+        )
+        return response.choices[0].message.content or ""

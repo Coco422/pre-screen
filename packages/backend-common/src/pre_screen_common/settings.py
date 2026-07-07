@@ -13,6 +13,7 @@ class AppSettings(BaseSettings):
     minio_bucket_resumes: str
     ai_base_url: str
     ai_model: str
+    ai_api_key: str = ""
     judge0_base_url: str
 
     @property

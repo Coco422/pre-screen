@@ -1,6 +1,13 @@
 from copy import deepcopy
+import os
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+
+from services.resume.app.domain.models import ResumeParseResult
+from services.resume.app.parsing.privacy import mask_email, mask_phone
+from services.resume.app.repositories.resume_repository import resume_repository
 
 router = APIRouter(prefix="/admin", tags=["gateway-admin"])
 
@@ -110,15 +117,51 @@ _PAPER_DRAFTS = {
 
 @router.get("/candidates")
 async def list_candidates() -> dict:
+    parsed = resume_repository.list_parse_results()
+    if parsed:
+        items = [_candidate_card_from_parse_result(result) for result in parsed]
+        return {"items": items, "total": len(items)}
     return {"items": deepcopy(_CANDIDATES), "total": len(_CANDIDATES)}
 
 
 @router.get("/candidates/{candidate_id}")
-async def get_candidate(candidate_id: str) -> dict:
+async def get_candidate(candidate_id: str, include_pii: bool = False) -> dict:
+    parsed = resume_repository.get_parse_result(candidate_id)
+    if parsed is not None:
+        return _candidate_detail_from_parse_result(
+            parsed,
+            include_pii=include_pii and os.environ.get("APP_ENV", "local") == "local",
+        )
     candidate = _CANDIDATE_DETAILS.get(candidate_id)
     if candidate is None:
         raise HTTPException(status_code=404, detail="Candidate not found.")
     return deepcopy(candidate)
+
+
+@router.get("/candidates/{candidate_id}/avatar")
+async def get_candidate_avatar(candidate_id: str) -> FileResponse:
+    parsed = resume_repository.get_parse_result(candidate_id)
+    if parsed is None or not parsed.avatar.image_path:
+        raise HTTPException(status_code=404, detail="Candidate avatar not found.")
+    return FileResponse(parsed.avatar.image_path)
+
+
+@router.get("/resume-batches/latest/analysis")
+async def get_latest_resume_batch_analysis() -> dict:
+    latest = resume_repository.latest_batch_result()
+    if latest is None:
+        return {
+            "batch_id": None,
+            "analysis_markdown": (
+                "# 简历批量共性分析\n\n"
+                "暂无真实批量解析结果。上传或运行批处理后，这里会展示技能矩阵、共性主题和复核提示。\n"
+            ),
+        }
+    return {
+        "batch_id": latest.batch_id,
+        "output_dir": latest.output_dir,
+        "analysis_markdown": latest.analysis_markdown,
+    }
 
 
 @router.get("/papers/{paper_id}")
@@ -127,3 +170,80 @@ async def get_paper(paper_id: str) -> dict:
     if paper is None:
         raise HTTPException(status_code=404, detail="Paper draft not found.")
     return deepcopy(paper)
+
+
+def _candidate_card_from_parse_result(result: ResumeParseResult) -> dict:
+    profile = result.profile
+    warnings = result.metadata.get("warnings", [])
+    return {
+        "id": result.file_id,
+        "name": profile.get("name") or result.candidate_name,
+        "role": profile.get("role") or _role_from_filename(result.original_filename),
+        "city": profile.get("city") or "未识别",
+        "status": "待审核" if warnings else "待发卷",
+        "quality": _parse_quality(result),
+        "summary": profile.get("summary") or "已完成简历解析，等待 HR 复核后生成考卷草稿。",
+        "skills": profile.get("skills", [])[:8],
+    }
+
+
+def _candidate_detail_from_parse_result(result: ResumeParseResult, *, include_pii: bool) -> dict:
+    profile = result.profile
+    phone = profile.get("phone")
+    email = profile.get("email")
+    if not include_pii:
+        phone = mask_phone(phone)
+        email = mask_email(email)
+
+    first_page_characters = 0
+    multimodal_pages = 0
+    for item in profile.get("page_metrics", []):
+        if item.get("page_number") == 1:
+            first_page_characters = item.get("text_chars", 0)
+        if item.get("needs_multimodal"):
+            multimodal_pages += 1
+
+    avatar_url = None
+    if result.avatar.status == "found" and result.avatar.image_path and Path(result.avatar.image_path).exists():
+        avatar_url = f"/admin/candidates/{result.file_id}/avatar"
+
+    return {
+        "id": result.file_id,
+        "name": profile.get("name") or result.candidate_name,
+        "role": profile.get("role") or _role_from_filename(result.original_filename),
+        "phone": phone,
+        "email": email,
+        "city": profile.get("city") or "未识别",
+        "skills": profile.get("skills", [])[:12],
+        "project_summary": profile.get("summary") or "已完成简历解析，等待人工复核。",
+        "markdown_preview": result.markdown,
+        "avatar_url": avatar_url,
+        "parse_metrics": {
+            "first_page_characters": first_page_characters,
+            "multimodal_pages": multimodal_pages,
+            "confidence": _parse_quality(result),
+        },
+        "review_notes": result.metadata.get("warnings", [])[:8] or ["基础信息字段已提取，请复核项目贡献深度。"],
+        "next_actions": [
+            {"label": "生成考卷草稿", "target": "/admin/papers/p-001"},
+            {"label": "查看原始 Markdown", "target": f"/admin/candidates/{result.file_id}"},
+        ],
+    }
+
+
+def _parse_quality(result: ResumeParseResult) -> str:
+    warnings = result.metadata.get("warnings", [])
+    text_length = result.metadata.get("text_length", 0)
+    if not warnings and text_length >= 1200:
+        return "高"
+    if text_length >= 800:
+        return "中"
+    return "低"
+
+
+def _role_from_filename(filename: str) -> str:
+    if "前端" in filename:
+        return "前端开发工程师"
+    if "全栈" in filename:
+        return "全栈开发工程师"
+    return "技术岗"

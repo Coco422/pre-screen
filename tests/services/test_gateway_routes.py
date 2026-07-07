@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 
 from services.gateway.app.main import app
+from services.resume.app.domain.models import AvatarAsset, ResumeParseResult
+from services.resume.app.repositories.resume_repository import resume_repository
 
 
 def test_gateway_admin_candidates_endpoint_returns_items():
@@ -10,6 +12,51 @@ def test_gateway_admin_candidates_endpoint_returns_items():
 
     assert response.status_code == 200
     assert response.json()["items"]
+
+
+def test_gateway_admin_candidates_prefers_parsed_resume_data(monkeypatch):
+    resume_repository.reset()
+    monkeypatch.setenv("APP_ENV", "local")
+    resume_repository.save_parse_result(
+        ResumeParseResult(
+            file_id="file-1",
+            candidate_name="张三",
+            original_filename="【前端开发工程师_深圳 6-9K】张三.pdf",
+            markdown="# 张三\n\n## 第 1 页：简历",
+            profile={
+                "name": "张三",
+                "phone": "18863226774",
+                "email": "2413951813@qq.com",
+                "role": "前端开发工程师",
+                "city": "深圳",
+                "skills": ["Vue", "TypeScript"],
+                "summary": "负责前端工程化与性能优化。",
+                "page_metrics": [
+                    {
+                        "page_number": 1,
+                        "text_chars": 1600,
+                        "image_count": 1,
+                        "needs_multimodal": True,
+                    }
+                ],
+            },
+            metadata={"warnings": [], "text_length": 1600},
+            avatar=AvatarAsset(status="not_found"),
+        )
+    )
+    client = TestClient(app)
+
+    list_response = client.get("/admin/candidates")
+    detail_response = client.get("/admin/candidates/file-1")
+    pii_response = client.get("/admin/candidates/file-1?include_pii=true")
+
+    assert list_response.status_code == 200
+    assert list_response.json()["items"][0]["name"] == "张三"
+    assert detail_response.json()["phone"] == "188****6774"
+    assert detail_response.json()["email"] == "24***3@qq.com"
+    assert "## 第 1 页" in detail_response.json()["markdown_preview"]
+    assert pii_response.json()["phone"] == "18863226774"
+    resume_repository.reset()
 
 
 def test_gateway_public_exam_endpoint_returns_exam_shell_payload():

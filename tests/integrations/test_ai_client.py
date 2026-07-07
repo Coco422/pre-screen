@@ -40,3 +40,28 @@ def test_ai_client_preserves_custom_prefix_base_urls():
 
     assert route.called
     assert result == "pong"
+
+
+@respx.mock
+def test_ai_client_sends_multimodal_messages_to_openai_compatible_endpoint():
+    route = respx.post("http://172.16.99.204:3398/v1/chat/completions").mock(
+        return_value=Response(
+            200,
+            json={
+                "choices": [{"message": {"content": '{"markdown":"ok"}'}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+    )
+
+    client = AIClient(api_key="test-key", base_url="http://172.16.99.204:3398", model="qwen3.6-27b")
+    result = client.multimodal_completion(
+        prompt="read this resume",
+        image_data_urls=["data:image/png;base64,AAAA"],
+    )
+
+    assert route.called
+    payload = route.calls.last.request.read()
+    assert b"qwen3.6-27b" in payload
+    assert b"image_url" in payload
+    assert result == '{"markdown":"ok"}'

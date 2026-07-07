@@ -2,10 +2,19 @@
   <section v-if="profile" class="detail-grid">
     <article class="glass-card detail-card">
       <div class="pill">Candidate Profile</div>
-      <h2 class="section-title detail-title">{{ profile.name }}</h2>
-      <p class="section-copy">
-        {{ profile.role }} · {{ profile.email }} · {{ profile.city }}
-      </p>
+      <div class="profile-heading">
+        <img v-if="profile.avatarUrl" class="avatar" :src="profile.avatarUrl" :alt="`${profile.name} 头像`" />
+        <div v-else class="avatar avatar--empty">无头像</div>
+        <div>
+          <h2 class="section-title detail-title">{{ profile.name }}</h2>
+          <p class="section-copy">
+            {{ profile.role }} · {{ profile.city }}
+          </p>
+          <p class="section-copy contact-line">
+            {{ profile.phone || "手机号未识别" }} · {{ profile.email || "邮箱未识别" }}
+          </p>
+        </div>
+      </div>
       <div class="tag-row">
         <span class="tag-chip" v-for="skill in profile.skills" :key="skill">{{ skill }}</span>
       </div>
@@ -50,6 +59,10 @@
           </RouterLink>
         </div>
       </div>
+      <div class="detail-section">
+        <h3>Markdown 预览</h3>
+        <pre class="markdown-preview">{{ profile.markdownPreview }}</pre>
+      </div>
     </article>
   </section>
 
@@ -93,8 +106,36 @@ watch(
 }
 
 .detail-title {
-  margin-top: 18px;
+  margin: 0;
   font-size: 2rem;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.avatar {
+  width: 86px;
+  height: 112px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(20, 33, 61, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  flex: 0 0 auto;
+}
+
+.avatar--empty {
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
+.contact-line {
+  margin-top: 6px;
 }
 
 .detail-section {
@@ -109,6 +150,19 @@ watch(
 .detail-section li {
   color: var(--ink-soft);
   line-height: 1.7;
+}
+
+.markdown-preview {
+  max-height: 360px;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 8px;
+  background: rgba(20, 33, 61, 0.06);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .metric-list {

@@ -104,7 +104,7 @@
           <el-icon class="resume-upload__icon"><UploadFilled /></el-icon>
           <div class="resume-upload__text">点击或拖拽 PDF 到这里上传</div>
           <template #tip>
-            <div class="resume-upload__tip">支持多个 PDF，上传后系统会自动解析并创建候选人。</div>
+            <div class="resume-upload__tip">支持多个 PDF</div>
           </template>
         </el-upload>
         <button class="outline-btn" type="button" :disabled="refreshing" @click="refreshTask">

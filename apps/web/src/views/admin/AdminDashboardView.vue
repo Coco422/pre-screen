@@ -1,6 +1,6 @@
 <template>
   <section class="dashboard-page">
-    <div v-if="loading" class="dashboard-state-card">正在同步工作台数据...</div>
+    <div v-if="loading" class="dashboard-state-card">加载中</div>
     <div v-else-if="loadError" class="dashboard-error-banner" role="alert">
       <strong>工作台数据加载失败</strong>
       <span>{{ loadError }}</span>

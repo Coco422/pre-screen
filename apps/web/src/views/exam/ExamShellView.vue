@@ -1,74 +1,42 @@
 <template>
   <div class="shell-page exam-page">
     <section v-if="loading" class="glass-card state-card">
-      <div class="pill">Candidate Session</div>
-      <h2 class="section-title">正在同步考试信息...</h2>
-      <p class="section-copy">系统正在拉取题目、作答状态和自动保存配置，请稍候。</p>
+      <h2 class="section-title">加载中</h2>
     </section>
 
     <section v-else-if="loadError" class="glass-card state-card">
-      <div class="pill">Candidate Session</div>
-      <h2 class="section-title">暂时无法进入考试</h2>
+      <h2 class="section-title">无法进入考试</h2>
       <p class="section-copy">{{ loadError }}</p>
-      <button class="primary-btn state-btn" type="button" @click="loadExamState">重新加载</button>
+      <button class="primary-btn state-btn" type="button" @click="loadExamState">重试</button>
     </section>
 
     <section v-else-if="exam?.state === 'not_started'" class="glass-card gate-card">
       <div class="gate-hero">
         <div>
-          <div class="pill">Candidate Access</div>
+          <div class="pill">开始</div>
           <h1 class="gate-title">{{ exam.paperTitle }}</h1>
-          <p class="section-copy">{{ exam.candidateName }}，开始前先看清考试时长、题量和系统提示，再输入验证码进入答题。</p>
         </div>
 
         <div class="gate-metric-grid">
           <article class="metric-tile">
             <div class="metric-value">{{ exam.durationMinutes }}</div>
-            <div class="metric-label">考试时长（分钟）</div>
+            <div class="metric-label">时长（分钟）</div>
           </article>
           <article class="metric-tile">
             <div class="metric-value">{{ questions.length }}</div>
             <div class="metric-label">总题量</div>
-          </article>
-          <article class="metric-tile">
-            <div class="metric-value">ON</div>
-            <div class="metric-label">自动保存</div>
-          </article>
-          <article class="metric-tile">
-            <div class="metric-value">基础</div>
-            <div class="metric-label">过程核验</div>
           </article>
         </div>
       </div>
 
       <div class="gate-layout">
         <section class="gate-section">
-          <h2 class="section-title">开始前请确认</h2>
+          <h2 class="section-title">注意事项</h2>
           <ul class="instruction-list">
             <li v-for="instruction in exam.instructions" :key="instruction">{{ instruction }}</li>
-            <li>开始后系统会持续自动保存答案，并定时发送在线心跳。</li>
-            <li>如果网络中断，页面会提示你当前已切到本机暂存，恢复网络后继续同步。</li>
-            <li>切屏、页面隐藏、复制粘贴、网络切换等事件会被记录用于过程核验。</li>
+            <li>答案会自动保存，切屏等行为会被记录。</li>
           </ul>
         </section>
-
-        <aside class="gate-side-card">
-          <div class="gate-side-card__title">系统正在做什么</div>
-          <div class="gate-status-list">
-            <article class="gate-status-item">
-              <strong>进入考试前</strong>
-              <span>验证验证码，加载题目，恢复你之前留在本机的草稿。</span>
-            </article>
-            <article class="gate-status-item">
-              <strong>考试进行中</strong>
-              <span>记录心跳、自动保存、提示离线与恢复状态，并持续显示剩余时间。</span>
-            </article>
-            <article class="gate-status-item">
-              <strong>交卷时</strong>
-              <span>再次提醒未完成题目，确认后提交整份试卷并返回结果状态。</span>
-            </article>
-          </div>
-        </aside>
       </div>
 
       <label class="gate-field">
@@ -89,8 +57,8 @@
     </section>
 
     <section v-else-if="exam?.state === 'submitted'" class="glass-card submitted-card">
-      <div class="pill">Submitted</div>
-      <h1 class="gate-title">已完成交卷</h1>
+      <div class="pill">已交卷</div>
+      <h1 class="gate-title">考试完成</h1>
       <p class="section-copy">
         系统已经记录你的答案{{ exam.submissionSummary?.submittedAt ? `，提交时间 ${formatDateTime(exam.submissionSummary.submittedAt)}` : "" }}。
       </p>
@@ -496,7 +464,7 @@ const autosaveShortCopy = computed(() => {
   if (autosaveState.value === "error") {
     return "自动保存遇到问题，请检查网络后继续";
   }
-  return "系统会自动保存你的作答";
+  return "自动保存中";
 });
 const autosaveBadgeClass = computed(() => {
   if (autosaveState.value === "error") {

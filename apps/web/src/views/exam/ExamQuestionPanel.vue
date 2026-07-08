@@ -13,13 +13,6 @@
 
     <p class="section-copy">{{ question.description }}</p>
 
-    <div class="question-status-bar">
-      <span>当前状态：{{ completionLabel }}</span>
-      <span>自动保存：{{ autosaveLabel }}</span>
-    </div>
-
-    <p class="question-hint">{{ helperCopy }}</p>
-
     <div v-if="question.mode === 'base_info'" class="field-grid">
       <label v-for="field in question.fields" :key="field" class="field-item">
         <span>{{ field }}</span>
@@ -70,8 +63,6 @@ const props = defineProps<{
   };
   modelValue?: Record<string, unknown>;
   progressLabel?: string;
-  completionLabel?: string;
-  autosaveLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -81,15 +72,6 @@ const emit = defineEmits<{
 const stringValue = (field: string) => String(props.modelValue?.[field] ?? "");
 const selectedOption = computed(() => String(props.modelValue?.answer ?? ""));
 const textValue = computed(() => String(props.modelValue?.answer_text ?? ""));
-const helperCopy = computed(() => {
-  if (props.question.mode === "base_info") {
-    return "这部分信息会随填写自动保存，建议一次把字段补齐，避免遗漏基础资料。";
-  }
-  if (props.question.mode === "objective") {
-    return "点击选项即可记录答案；切换答案后系统会自动更新保存状态。";
-  }
-  return "主观题支持自由作答，输入过程中系统会自动保存，不需要手动提交本题。";
-});
 
 function updateField(field: string, value: string) {
   emit("update:modelValue", { ...(props.modelValue ?? {}), [field]: value });

@@ -35,7 +35,7 @@
       <el-input v-model="keyword" clearable placeholder="搜索候选人 / 岗位 / 城市" />
     </div>
 
-    <div v-if="loading" class="candidate-page__state">正在同步候选人列表...</div>
+    <div v-if="loading" class="candidate-page__state">加载中</div>
     <div v-else-if="loadError" class="candidate-page__state candidate-page__state--error">{{ loadError }}</div>
 
     <el-table v-else :data="candidates" class="candidate-page__table" empty-text="没有符合筛选条件的候选人。" row-key="id" stripe>

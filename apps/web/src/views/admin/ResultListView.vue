@@ -8,7 +8,7 @@
       <RouterLink class="secondary-btn" :to="{ name: 'admin-workbench' }">返回工作台</RouterLink>
     </div>
 
-    <div v-if="loading" class="state-card">正在同步结果列表...</div>
+    <div v-if="loading" class="state-card">加载中</div>
     <div v-else-if="loadError" class="state-card">{{ loadError }}</div>
 
     <div v-else-if="resultCards.length" class="result-grid">

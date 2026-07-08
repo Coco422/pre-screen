@@ -149,22 +149,20 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: "/exam/:token",
-    redirect: (to) => `/exam/${String(to.params.token)}/start`
+    name: "exam-shell",
+    component: () => import("../views/exam/ExamShellView.vue")
   },
   {
     path: "/exam/:token/start",
-    name: "exam-start",
-    component: () => import("../views/exam/ExamStartView.vue")
+    redirect: (to) => `/exam/${String(to.params.token)}`
   },
   {
     path: "/exam/:token/session",
-    name: "exam-session",
-    component: () => import("../views/exam/ExamSessionView.vue")
+    redirect: (to) => `/exam/${String(to.params.token)}`
   },
   {
     path: "/exam/:token/submitted",
-    name: "exam-submitted",
-    component: () => import("../views/exam/ExamSubmittedView.vue")
+    redirect: (to) => `/exam/${String(to.params.token)}`
   }
 ];
 

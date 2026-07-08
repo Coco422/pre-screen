@@ -56,7 +56,7 @@
           <RouterLink class="text-link" :to="{ name: 'admin-task-create' }">新建任务</RouterLink>
         </div>
 
-        <div v-if="loading" class="empty-state">正在同步任务...</div>
+        <div v-if="loading" class="empty-state">加载中</div>
 
         <div v-else class="task-list">
           <article class="task-item" v-for="task in tasks" :key="task.id">
@@ -87,7 +87,7 @@
           <RouterLink class="text-link" :to="{ name: 'admin-candidates' }">查看全部</RouterLink>
         </div>
 
-        <div v-if="loading" class="empty-state">正在同步候选人...</div>
+        <div v-if="loading" class="empty-state">加载中</div>
 
         <div v-else class="shortcut-list">
           <RouterLink
@@ -117,7 +117,7 @@
         <RouterLink class="text-link" :to="{ name: 'admin-results' }">结果列表</RouterLink>
       </div>
 
-      <div v-if="loading" class="empty-state">正在同步结果...</div>
+      <div v-if="loading" class="empty-state">加载中</div>
 
       <div v-else class="result-list">
         <RouterLink

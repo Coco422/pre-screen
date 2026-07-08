@@ -108,9 +108,8 @@
   </section>
 
   <section v-else class="glass-card paper-card">
-    <div class="pill">Paper Publish</div>
-    <h2 class="section-title paper-title">{{ loadError || "正在同步考卷草稿..." }}</h2>
-    <p class="section-copy">编辑器会优先读取后端考卷数据，发布信息则由前端工作台补齐展示位。</p>
+    <div class="pill">考卷</div>
+    <h2 class="section-title paper-title">{{ loadError || "加载中" }}</h2>
   </section>
 </template>
 

@@ -11,6 +11,6 @@ export const adminNavigation: AdminNavigationItem[] = [
   { label: "候选人", icon: "UserFilled", to: { name: "admin-candidates" } },
   { label: "考卷管理", icon: "Document", to: { name: "admin-papers" }, placeholder: true },
   { label: "结果中心", icon: "DataAnalysis", to: { name: "admin-results" } },
-  { label: "风险管理", icon: "WarningFilled", to: { name: "admin-risk" }, placeholder: true },
-  { label: "系统设置", icon: "Setting", to: { name: "admin-settings" }, placeholder: true }
+  { label: "考试监控", icon: "WarningFilled", to: { name: "admin-risk" }, placeholder: true },
+  { label: "AI 配置", icon: "Setting", to: { name: "admin-settings" } }
 ];

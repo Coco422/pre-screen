@@ -137,13 +137,9 @@ export const routes: RouteRecordRaw[] = [
         path: "settings",
         name: "admin-settings",
         meta: {
-          title: "系统设置"
+          title: "AI 配置"
         },
-        component: () => import("../views/shared/PlaceholderView.vue"),
-        props: {
-          description: "系统设置将在后续阶段重构。",
-          iconLabel: "Settings"
-        }
+        component: () => import("../views/admin/AiSettingsView.vue")
       }
     ]
   },

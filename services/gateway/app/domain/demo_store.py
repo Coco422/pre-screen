@@ -1078,6 +1078,15 @@ class GatewayDemoStore:
             raise LookupError("Candidate not found.")
         return self._serialize_candidate_detail(candidate)
 
+    def get_candidate_pdf_path(self, candidate_id: str) -> str | None:
+        candidate = self.candidates.get(candidate_id)
+        if candidate is None:
+            raise LookupError("Candidate not found.")
+        pdf_path = candidate.get("pdf_path")
+        if pdf_path and Path(pdf_path).exists():
+            return str(pdf_path)
+        return None
+
     def update_candidate(self, candidate_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         candidate = self.candidates.get(candidate_id)
         if candidate is None:
@@ -1746,6 +1755,9 @@ class GatewayDemoStore:
             "paper_id": candidate["paper_ids"][-1] if candidate.get("paper_ids") else None,
             "invitation_token": self._find_candidate_invitation_token(candidate["candidate_id"]),
             "result_id": self._find_candidate_result_id(candidate["candidate_id"]),
+            "resume_pdf_url": f"/admin/candidates/{candidate['candidate_id']}/resume.pdf"
+            if candidate.get("pdf_path")
+            else None,
             "next_actions": next_actions,
         }
 

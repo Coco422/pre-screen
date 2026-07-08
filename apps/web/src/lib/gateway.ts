@@ -163,6 +163,7 @@ export type CandidateDetail = {
     multimodalPages: number;
     confidence: string;
   };
+  resumePdfUrl?: string | null;
   paperId?: string | null;
   invitationToken?: string | null;
   resultId?: string | null;
@@ -924,6 +925,7 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
       multimodal_pages: number;
       confidence: string;
     };
+    resume_pdf_url?: string | null;
     next_actions?: Array<{ label?: string; target?: string }>;
     paper_id?: string | null;
     invitation_token?: string | null;
@@ -977,6 +979,7 @@ export async function loadCandidateDetail(candidateId: string): Promise<Candidat
       multimodalPages: response.parse_metrics.multimodal_pages,
       confidence: response.parse_metrics.confidence
     },
+    resumePdfUrl: response.resume_pdf_url ?? null,
     paperId: derivedPaperId,
     invitationToken: response.invitation_token,
     resultId: response.result_id

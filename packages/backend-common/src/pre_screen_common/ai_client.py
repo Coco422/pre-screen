@@ -67,6 +67,31 @@ class AIClient:
         )
         return self._coerce_json_object(raw_content)
 
+    def multimodal_completion(
+        self,
+        *,
+        prompt: str,
+        image_data_urls: Sequence[str],
+        system_prompt: str | None = None,
+        temperature: float = 0.1,
+    ) -> str:
+        """Send a multimodal request with pre-encoded image data URLs."""
+        messages: list[dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+        for data_url in image_data_urls:
+            content.append({"type": "image_url", "image_url": {"url": data_url}})
+        messages.append({"role": "user", "content": content})
+
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=temperature,
+        )
+        return response.choices[0].message.content or ""
+
     @staticmethod
     def _image_to_data_url(image_path: Path) -> str:
         suffix = image_path.suffix.lower().lstrip(".") or "png"

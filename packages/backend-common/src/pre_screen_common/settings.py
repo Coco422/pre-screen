@@ -11,10 +11,9 @@ class AppSettings(BaseSettings):
     minio_access_key: str
     minio_secret_key: str
     minio_bucket_resumes: str
-    ai_api_key: str | None = None
-    ai_base_url: str
-    ai_model: str
     ai_api_key: str = ""
+    ai_base_url: str = "http://172.16.99.204:3398"
+    ai_model: str = "qwen3.6-27b"
     judge0_base_url: str
 
     @property

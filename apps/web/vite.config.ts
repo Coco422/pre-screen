@@ -3,6 +3,17 @@ import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("vue-pdf-embed") || id.includes("pdfjs-dist")) {
+            return "pdf-viewer";
+          }
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       "/api": {

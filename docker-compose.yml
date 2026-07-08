@@ -158,8 +158,8 @@ services:
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET_RESUMES: resumes
       AI_API_KEY: ${AI_API_KEY:-}
-      AI_BASE_URL: https://aiapi.szmckj.cn
-      AI_MODEL: qwen3.6-35b-a3b
+      AI_BASE_URL: http://172.16.99.204:3398
+      AI_MODEL: qwen3.6-27b
       JUDGE0_BASE_URL: ${JUDGE0_BASE_URL:-http://192.168.100.189:2360}
     depends_on:
       postgres:

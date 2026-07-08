@@ -20,6 +20,5 @@
 ## Pending Requests
 
 <!-- BEGIN ARCHITECTURE PENDING REQUESTS -->
-- (none)
+- [ ] 2026-07-07T19:28:54+0800 [high] `docker-compose.yml` -> [root](requests/root.md)
 <!-- END ARCHITECTURE PENDING REQUESTS -->
-

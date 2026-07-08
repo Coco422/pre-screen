@@ -46,6 +46,7 @@ def run_resume_batch(
             profile=profile,
             metadata=profile["metadata"],
             avatar=avatar,
+            pdf_path=str(pdf_path),
         )
         parsed_results.append(result)
         if save_to_repository:

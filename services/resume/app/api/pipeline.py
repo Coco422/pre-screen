@@ -50,6 +50,7 @@ async def parse_resume(file_id: str, request: ParseResumeRequest | None = None) 
         profile=profile,
         metadata=profile["metadata"],
         avatar=avatar,
+        pdf_path=upload.local_path,
     )
     resume_repository.save_parse_result(result)
     return _parse_result_payload(result)

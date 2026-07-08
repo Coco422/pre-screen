@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Header, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from services.gateway.app.domain.demo_store import gateway_demo_store
@@ -162,6 +163,17 @@ async def get_candidate(candidate_id: str) -> dict:
         return gateway_demo_store.get_candidate(candidate_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
+
+
+@router.get("/candidates/{candidate_id}/resume.pdf")
+async def get_candidate_resume_pdf(candidate_id: str) -> FileResponse:
+    try:
+        pdf_path = gateway_demo_store.get_candidate_pdf_path(candidate_id)
+    except Exception as exc:
+        raise _translate_store_error(exc) from exc
+    if not pdf_path:
+        raise HTTPException(status_code=404, detail="Resume PDF not found.")
+    return FileResponse(pdf_path, media_type="application/pdf")
 
 
 @router.put("/candidates/{candidate_id}")

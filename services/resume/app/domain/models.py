@@ -36,6 +36,7 @@ class ResumeParseResult:
     metadata: dict
     avatar: AvatarAsset
     parse_status: str = "parsed"
+    pdf_path: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 

@@ -2,10 +2,10 @@
 
 > **Status**: Pending
 > **Detected**: 2026-07-07T19:01:21+0800
-> **Updated**: 2026-07-07T19:02:02+0800
-> **Severity**: medium
-> **Change Type**: boundary-or-config
-> **File**: `apps/web/vite.config.ts`
+> **Updated**: 2026-07-07T19:28:54+0800
+> **Severity**: high
+> **Change Type**: data-or-deploy
+> **File**: `docker-compose.yml`
 > **Functional Block**: `root`
 > **Capability ID**: `root`
 > **Matched Prefix**: `root`
@@ -15,8 +15,8 @@
 > **Workstream Directory**: `tasks/workstreams/root/_root`
 > **Contract Files**: `none`, `none`
 > **Contract Sync Required**: false
-> **Spawn Recommended**: false
-> **Open Edits**: 1
+> **Spawn Recommended**: true
+> **Open Edits**: 2
 
 ## Required Follow-up
 
@@ -34,15 +34,16 @@
 
 | Last Event | Severity | Change Type | File |
 | --- | --- | --- | --- |
+| 2026-07-07T19:28:54+0800 | high | data-or-deploy | `docker-compose.yml` |
 | 2026-07-07T19:02:02+0800 | medium | boundary-or-config | `apps/web/vite.config.ts` |
 
 ## Event Fields
 
 ```json
 {
-  "ts": "2026-07-07T19:02:02+0800",
-  "file_path": "apps/web/vite.config.ts",
-  "severity": "medium",
+  "ts": "2026-07-07T19:28:54+0800",
+  "file_path": "docker-compose.yml",
+  "severity": "high",
   "functional_block": "root",
   "capability_id": "root",
   "matched_prefix": "root",
@@ -52,9 +53,9 @@
   "workstream_dir": "tasks/workstreams/root/_root",
   "contract_agents": "",
   "contract_claude": "",
-  "change_type": "boundary-or-config",
+  "change_type": "data-or-deploy",
   "request_file": "docs/architecture/requests/root.md",
-  "spawn_recommended": false,
+  "spawn_recommended": true,
   "contract_sync_required": false
 }
 ```

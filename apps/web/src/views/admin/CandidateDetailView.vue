@@ -203,6 +203,14 @@
             </div>
           </dl>
         </section>
+
+        <section class="resume-pdf-block">
+          <h3>简历原件</h3>
+          <div v-if="profile.resumePdfUrl" class="pdf-viewer">
+            <VuePdfEmbed :source="pdfSource" class="pdf-embed" />
+          </div>
+          <p v-else class="empty-copy">暂无 PDF 原件</p>
+        </section>
       </article>
     </section>
   </section>
@@ -214,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, defineAsyncComponent, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 
 import AdminScoreBar from "../../components/admin/AdminScoreBar.vue";
@@ -230,6 +238,8 @@ import {
   type AdminTone
 } from "../../components/admin/adminUi";
 import { loadCandidateDetail, type CandidateDetail } from "../../lib/gateway";
+
+const VuePdfEmbed = defineAsyncComponent(() => import("vue-pdf-embed"));
 
 type CandidateDraft = Pick<
   CandidateDetail,
@@ -302,6 +312,17 @@ const projectSummaryState = computed(() => {
     return { label: "摘要偏短", tone: "warning" as AdminTone };
   }
   return { label: "摘要可用", tone: "success" as AdminTone };
+});
+
+const pdfSource = computed(() => {
+  if (!profile.value?.resumePdfUrl) {
+    return "";
+  }
+  const url = profile.value.resumePdfUrl;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  return `/api${url}`;
 });
 
 function readCandidateDraft(targetCandidateId: string): Partial<CandidateDraft> | null {
@@ -741,5 +762,29 @@ watch(
   .delivery-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.resume-pdf-block {
+  margin-top: 18px;
+}
+
+.resume-pdf-block h3 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a5070;
+}
+
+.pdf-viewer {
+  min-height: 400px;
+  max-height: 700px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #dde7f2;
+  background: #f8fafc;
+}
+
+.pdf-embed {
+  width: 100%;
 }
 </style>

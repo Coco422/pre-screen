@@ -233,7 +233,7 @@ watch(
       result.value = await loadResultDetail(resultId);
       loadError.value = "";
     } catch (error) {
-      loadError.value = error instanceof Error ? error.message : "结果详情加载失败。";
+      loadError.value = error instanceof Error ? error.message : "加载失败";
     }
   },
   { immediate: true }

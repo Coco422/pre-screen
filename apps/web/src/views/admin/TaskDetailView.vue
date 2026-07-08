@@ -407,7 +407,7 @@ async function refreshTask() {
       startPolling();
     }
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : "任务详情加载失败。";
+    loadError.value = error instanceof Error ? error.message : "加载失败";
   } finally {
     refreshing.value = false;
   }

@@ -44,6 +44,7 @@ class UpdateCandidateRequest(BaseModel):
 class UpdatePaperRequest(BaseModel):
     title: str | None = None
     duration_minutes: int | None = Field(default=None, ge=1, le=240)
+    introduction: str | None = None
     questions: list[dict] | None = None
 
 
@@ -209,9 +210,10 @@ async def update_paper(paper_id: str, request: UpdatePaperRequest) -> dict:
 
 
 @router.post("/papers/{paper_id}/publish", status_code=status.HTTP_201_CREATED)
-async def publish_paper(paper_id: str, request: PublishPaperRequest) -> dict:
+async def publish_paper(paper_id: str, request: PublishPaperRequest | None = None) -> dict:
     try:
-        return gateway_demo_store.publish_paper(paper_id, request.duration_minutes)
+        duration = request.duration_minutes if request else None
+        return gateway_demo_store.publish_paper(paper_id, duration)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 

@@ -629,7 +629,7 @@ watch(
         return;
       }
 
-      loadError.value = "候选人画像加载失败，请稍后重试。";
+      loadError.value = "加载失败";
     }
   },
   { immediate: true }

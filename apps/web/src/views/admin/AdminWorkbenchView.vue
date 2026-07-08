@@ -284,7 +284,7 @@ onMounted(async () => {
     candidates.value = candidateItems;
     results.value = resultItems;
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : "工作台加载失败，请稍后重试。";
+    loadError.value = error instanceof Error ? error.message : "加载失败";
   } finally {
     loading.value = false;
   }

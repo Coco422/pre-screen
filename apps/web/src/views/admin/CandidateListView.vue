@@ -198,7 +198,7 @@ async function loadCandidateList() {
       return;
     }
 
-    loadError.value = "候选人列表加载失败，等待后端接口恢复。";
+    loadError.value = "加载失败";
     candidates.value = [];
   } finally {
     if (requestId === latestRequestId) {

@@ -110,7 +110,7 @@ onMounted(async () => {
     loadError.value = "";
     await hydrateRiskPreview(results.value);
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : "结果列表加载失败。";
+    loadError.value = error instanceof Error ? error.message : "加载失败";
   } finally {
     loading.value = false;
   }

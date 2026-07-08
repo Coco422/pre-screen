@@ -2,22 +2,18 @@
   <section v-if="paper" class="glass-card paper-card">
     <div class="paper-head">
       <div>
-        <div class="pill">Paper Publish</div>
+        <div class="pill">考卷</div>
         <h2 class="section-title paper-title">{{ paper.title }}</h2>
-        <p class="paper-meta">发布对象：{{ candidateDisplayName }}</p>
+        <p class="paper-meta">{{ candidateDisplayName }}</p>
       </div>
       <div class="button-row">
-        <AdminToneBadge :label="paper.status === 'published' ? '已发布' : '草稿中'" :tone="paper.status === 'published' ? 'success' : 'warning'" />
-        <AdminToneBadge :label="shareCardTone.label" :tone="shareCardTone.tone" />
+        <AdminToneBadge :label="paper.status === 'published' ? '已发布' : '草稿'" :tone="paper.status === 'published' ? 'success' : 'warning'" />
       </div>
     </div>
 
     <section class="publish-panel">
       <div class="panel-head">
-        <div>
-          <h3>确认并发布考试入口</h3>
-          <p class="panel-copy">先核对发卷对象、题量和分享信息，再生成考试链接与验证码。</p>
-        </div>
+        <h3>发布考试入口</h3>
         <RouterLink class="secondary-btn" :to="{ name: 'admin-candidates' }">返回候选人</RouterLink>
       </div>
 
@@ -37,31 +33,25 @@
               <span>题目总数</span>
               <strong>{{ paper.questions.length }} 题</strong>
             </div>
-            <div class="check-item">
-              <span>入口状态</span>
-              <strong>{{ shareCardTone.label }}</strong>
-            </div>
           </div>
 
           <div class="confirm-actions">
             <button class="secondary-btn" type="button" @click="saveDraft">保存草稿</button>
             <button class="primary-btn" type="button" :disabled="publishing" @click="generatePublishInfo">
-              {{ publishing ? "发布中..." : "确认并发布考试入口" }}
+              {{ publishing ? "发布中..." : "确认发布" }}
             </button>
           </div>
 
-          <div class="publish-footer">
-            <span>{{ statusMessage || "生成后会展示可直接分享给候选人的入口卡片。" }}</span>
+          <div v-if="statusMessage" class="publish-footer">
+            <span>{{ statusMessage }}</span>
           </div>
         </article>
 
         <article class="share-card" :class="{ 'share-card--ready': shareReady }">
           <div class="share-head">
-            <div>
-              <div class="share-title">考试入口分享卡</div>
-              <div class="share-copy">{{ shareReady ? shareCardDescription : "点击主按钮后生成正式分享信息。" }}</div>
-            </div>
-            <AdminToneBadge :label="shareCardTone.label" :tone="shareCardTone.tone" />
+            <div class="share-title">分享卡</div>
+            <AdminToneBadge v-if="shareReady" label="已生成" tone="success" />
+            <AdminToneBadge v-else label="待发布" tone="info" />
           </div>
 
           <div class="publish-grid">
@@ -69,16 +59,12 @@
             <AdminCopyField label="验证码" :value="publishInfo.code" />
           </div>
 
-          <div class="share-state">
-            <div class="share-state-item">
-              <span>发布类型</span>
-              <strong>{{ shareReady && isFallbackPublish ? "前端预览入口" : "正式考试入口" }}</strong>
-            </div>
-            <div class="share-state-item">
-              <span>分享建议</span>
-              <strong>{{ shareReady ? "复制链接与验证码，一次发给候选人" : "入口尚未生成" }}</strong>
-            </div>
-          </div>
+          <button
+            v-if="shareReady"
+            class="primary-btn copy-all-btn"
+            type="button"
+            @click="copyAll"
+          >一键复制</button>
         </article>
       </div>
     </section>
@@ -159,26 +145,6 @@ const outline = computed(() => {
   ];
 });
 const shareReady = computed(() => Boolean(publishInfo.value.link && publishInfo.value.code));
-const shareCardTone = computed(() => {
-  if (shareReady.value) {
-    return {
-      label: isFallbackPublish.value ? "预览入口已生成" : "考试入口已发布",
-      tone: (isFallbackPublish.value ? "warning" : "success") as "warning" | "success"
-    };
-  }
-
-  return {
-    label: "等待发布",
-    tone: "info" as const
-  };
-});
-const shareCardDescription = computed(() => {
-  if (isFallbackPublish.value) {
-    return "后端发布接口暂不可用，当前提供的是前端预览入口，便于 HR 先行推进沟通。";
-  }
-
-  return "入口已生成，可以直接复制链接与验证码发送给候选人。";
-});
 
 function storageKey() {
   return `admin-paper-publish:${paperId.value}:${candidateId.value || "preview"}`;
@@ -199,14 +165,6 @@ function readPublishInfo(): PublishInfo {
   } catch {
     return { link: "", code: "" };
   }
-}
-
-function buildVerificationCode(seed: string) {
-  const checksum = seed
-    .split("")
-    .reduce((total, char, index) => total + char.charCodeAt(0) * (index + 17), 0);
-
-  return String(checksum).slice(-6).padStart(6, "0");
 }
 
 function questionKindLabel(kind: string) {
@@ -247,27 +205,18 @@ async function generatePublishInfo() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(storageKey(), JSON.stringify(nextValue));
     }
-    statusMessage.value = `考试入口已发布，可直接复制分享给 ${candidateDisplayName.value}。`;
-  } catch {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const token = `${paperId.value}-${candidateId.value || "preview"}`
-      .replace(/[^a-zA-Z0-9-]/g, "-")
-      .toLowerCase();
-    const nextValue = {
-      link: `${window.location.origin}/exam/${token}`,
-      code: buildVerificationCode(`${paperId.value}:${candidateId.value || "preview"}`)
-    };
-
-    isFallbackPublish.value = true;
-    publishInfo.value = nextValue;
-    window.localStorage.setItem(storageKey(), JSON.stringify(nextValue));
-    statusMessage.value = `后端发布接口暂不可用，已生成前端预览入口给 ${candidateDisplayName.value}。`;
+    statusMessage.value = "已发布";
+  } catch (error) {
+    statusMessage.value = error instanceof Error ? error.message : "发布失败";
   } finally {
     publishing.value = false;
   }
+}
+
+async function copyAll() {
+  const text = `考试链接：${publishInfo.value.link}\n验证码：${publishInfo.value.code}`;
+  await navigator.clipboard.writeText(text);
+  statusMessage.value = "已复制到剪贴板";
 }
 
 async function saveDraft() {
@@ -282,9 +231,9 @@ async function saveDraft() {
       introduction: paper.value.introduction,
       questions: paper.value.questions
     });
-    statusMessage.value = "草稿已同步到后端。";
-  } catch {
-    statusMessage.value = `后端保存暂不可用，已记录当前草稿状态 ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+    statusMessage.value = "已保存";
+  } catch (error) {
+    statusMessage.value = error instanceof Error ? error.message : "保存失败";
   }
 }
 
@@ -327,7 +276,7 @@ watch(
         return;
       }
 
-      loadError.value = "考卷草稿加载失败，请稍后重试。";
+      loadError.value = "加载失败";
     }
   },
   { immediate: true }
@@ -436,6 +385,11 @@ watch(
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.copy-all-btn {
+  margin-top: 14px;
+  width: 100%;
 }
 
 .paper-layout {

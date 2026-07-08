@@ -44,11 +44,6 @@
         <input v-model="verificationCode" class="soft-input" placeholder="请输入 HR 发给你的验证码" />
       </label>
 
-      <div class="gate-feedback" :class="{ 'gate-feedback--active': starting }">
-        <strong>{{ startFeedback.title }}</strong>
-        <span>{{ startFeedback.copy }}</span>
-      </div>
-
       <div v-if="entryError" class="error-banner">{{ entryError }}</div>
 
       <button class="primary-btn gate-btn" type="button" :disabled="starting" @click="startExamSession">
@@ -420,24 +415,6 @@ const countdownLabel = computed(() => {
   const seconds = String(totalSeconds % 60).padStart(2, "0");
   return `${minutes}:${seconds}`;
 });
-const startFeedback = computed(() => {
-  if (starting.value) {
-    return {
-      title: "正在验证验证码并创建考试会话",
-      copy: "系统会同步题目、恢复草稿，并启动自动保存和在线心跳。"
-    };
-  }
-  if (entryError.value) {
-    return {
-      title: "还没有成功进入考试",
-      copy: "请检查验证码是否正确，或联系 HR 重新发送。"
-    };
-  }
-  return {
-    title: "输入验证码后会立即进入考试",
-    copy: "系统会加载题目、开始计时，并在答题过程中持续自动保存。"
-  };
-});
 const autosaveStatusLabel = computed(() => {
   if (autosaveState.value === "pending") {
     return "等待保存";
@@ -624,7 +601,7 @@ async function loadExamState() {
       store.reset();
     }
   } catch (error) {
-    loadError.value = error instanceof Error ? error.message : "考试信息加载失败，请稍后重试。";
+    loadError.value = error instanceof Error ? error.message : "加载失败";
   } finally {
     loading.value = false;
   }

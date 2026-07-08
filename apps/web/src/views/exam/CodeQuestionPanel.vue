@@ -2,21 +2,13 @@
   <article class="glass-card code-panel">
     <header class="question-panel__head">
       <div class="question-panel__headline">
-        <div class="question-panel__eyebrow">
-          <div class="question-panel__type">代码题</div>
-          <span class="question-panel__progress">{{ progressLabel }}</span>
-        </div>
+        <div class="question-panel__type">代码题</div>
         <h3>{{ title }}</h3>
       </div>
       <span class="pill">{{ score }} 分</span>
     </header>
 
     <p class="section-copy">{{ description }}</p>
-
-    <div class="code-status-bar">
-      <span>自动保存：{{ autosaveLabel }}</span>
-      <span>试跑不计分，正式提交会按用例判题并更新当前结果</span>
-    </div>
 
     <div class="code-toolbar">
       <label class="language-picker">
@@ -155,8 +147,6 @@ defineProps<{
   code: string;
   runInput: string;
   busyMode?: "run" | "submit" | null;
-  progressLabel?: string;
-  autosaveLabel?: string;
   runFeedback?: RunFeedback;
   submitFeedback?: SubmitFeedback;
 }>();

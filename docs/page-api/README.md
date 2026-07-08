@@ -23,6 +23,10 @@
 - [12. 考试身份验证页](./12-exam-verify.md)
 - [13. 在线作答页](./13-exam-session.md)
 - [14. 交卷完成页](./14-exam-submitted.md)
+- [15. AI 配置管理](./15-ai-settings.md)
+- [16. 考试实时监控与防作弊](./16-exam-monitor-anti-cheat.md)
+- [17. 前端排版重设计需求](./17-frontend-layout-redesign.md)
+- [接口对齐审计](./AUDIT.md)
 
 ## 候选人主状态建议
 

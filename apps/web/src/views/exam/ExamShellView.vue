@@ -82,61 +82,28 @@
       <aside class="glass-card exam-sidebar">
         <div class="sidebar-head-wrap">
           <div>
-            <div class="pill">Candidate Session</div>
+            <div class="pill">考试</div>
             <h1 class="sidebar-head">{{ exam.paperTitle }}</h1>
-            <p class="section-copy">{{ exam.candidateName }} · 已进入作答状态</p>
           </div>
           <span class="status-badge" :class="connectionStatus === 'offline' ? 'status-badge--danger' : 'status-badge--success'">
-            {{ connectionStatus === "offline" ? "离线中" : "在线" }}
+            {{ connectionStatus === "offline" ? "离线" : "在线" }}
           </span>
         </div>
 
+        <section class="session-block">
+          <div class="timer-value">{{ countdownLabel }}</div>
+          <div class="metric-label">剩余时间</div>
+        </section>
+
         <section class="progress-card">
           <div class="progress-card__head">
-            <strong>题目进度</strong>
-            <span>{{ currentQuestionNumber }} / {{ questions.length }}</span>
+            <strong>进度</strong>
+            <span>{{ answeredCount }} / {{ questions.length }}</span>
           </div>
-          <div class="progress-copy">已完成 {{ answeredCount }} 题，剩余 {{ unansweredQuestions.length }} 题未完成</div>
           <div class="progress-track">
             <span :style="{ width: `${progressPercent}%` }" />
           </div>
         </section>
-
-        <div class="session-block">
-          <div class="timer-value">{{ countdownLabel }}</div>
-          <div class="metric-label">剩余时间</div>
-          <div class="session-inline-meta">
-            <span>总时长 {{ exam.durationMinutes }} 分钟</span>
-            <span>{{ questions.length }} 题</span>
-          </div>
-        </div>
-
-        <section class="status-card">
-          <div class="status-card__head">
-            <strong>自动保存状态</strong>
-            <span class="status-badge" :class="autosaveBadgeClass">{{ autosaveStatusLabel }}</span>
-          </div>
-          <p class="status-copy">{{ autosaveStatusCopy }}</p>
-          <div class="status-card__meta">
-            <span>{{ heartbeatStatusLabel }}</span>
-            <span v-if="lastAutosaveAt">最近保存 {{ lastAutosaveAt }}</span>
-          </div>
-        </section>
-
-        <div class="alert-stack">
-          <div v-if="restoreNotice" class="alert-banner alert-banner--info">
-            <strong>已恢复草稿</strong>
-            <span>{{ restoreNotice }}</span>
-          </div>
-          <div v-if="networkNotice" class="alert-banner" :class="connectionStatus === 'offline' ? 'alert-banner--danger' : 'alert-banner--success'">
-            <strong>{{ connectionStatus === "offline" ? "网络已断开" : "网络已恢复" }}</strong>
-            <span>{{ networkNotice }}</span>
-          </div>
-          <div v-if="recentRiskMessage" class="alert-banner alert-banner--warning">
-            <strong>过程记录提醒</strong>
-            <span>{{ recentRiskMessage }}</span>
-          </div>
-        </div>
 
         <div class="nav-stack exam-nav">
           <button
@@ -161,55 +128,24 @@
         </div>
 
         <div class="session-meta">
-          <div>最后心跳：{{ store.lastHeartbeatAt || "等待首次保活中" }}</div>
-          <div>本地已记录：{{ savedDraftCount }} 题</div>
-          <div>风控记录：{{ store.riskEvents.length }} 条</div>
+          <div>已保存 {{ savedDraftCount }} 题</div>
         </div>
 
         <button class="primary-btn submit-btn" type="button" :disabled="submittingExam" @click="openSubmitConfirm">
-          {{ submittingExam ? "正在交卷..." : "提交试卷" }}
+          {{ submittingExam ? "交卷中..." : "交卷" }}
         </button>
       </aside>
 
       <main class="exam-main">
         <section class="glass-card intro-card">
           <div class="intro-head">
-            <div>
-              <div class="pill">Exam Flow</div>
-              <h2 class="section-title">{{ activeQuestion?.title ?? "准备题目中..." }}</h2>
-            </div>
+            <h2 class="section-title">{{ activeQuestion?.title ?? "加载中" }}</h2>
             <div class="intro-badges">
-              <span class="status-badge status-badge--neutral">{{ activeQuestion?.typeLabel ?? "题目" }}</span>
-              <span
-                class="status-badge"
-                :class="activeQuestion ? completionBadgeClass(activeQuestion) : 'status-badge--neutral'"
-              >
-                {{ activeQuestion ? questionCompletionLabel(activeQuestion) : "准备中" }}
-              </span>
+              <span class="status-badge status-badge--neutral">{{ activeQuestion?.typeLabel ?? "" }}</span>
+              <span v-if="activeQuestion" class="status-badge status-badge--neutral">{{ activeQuestion.score }} 分</span>
             </div>
           </div>
-          <p class="section-copy">{{ activeQuestion?.description ?? "系统正在准备题目。" }}</p>
-
-          <div class="intro-meta">
-            <span>当前进度 {{ currentQuestionNumber }} / {{ questions.length }}</span>
-            <span v-if="activeQuestion">本题 {{ activeQuestion.score }} 分</span>
-            <span>{{ autosaveShortCopy }}</span>
-          </div>
-        </section>
-
-        <section v-if="restoreNotice || networkNotice || recentRiskMessage" class="exam-notice-grid">
-          <article v-if="restoreNotice" class="notice-card">
-            <strong>恢复提示</strong>
-            <p>{{ restoreNotice }}</p>
-          </article>
-          <article v-if="networkNotice" class="notice-card" :class="connectionStatus === 'offline' ? 'notice-card--danger' : 'notice-card--success'">
-            <strong>{{ connectionStatus === "offline" ? "离线提示" : "恢复提示" }}</strong>
-            <p>{{ networkNotice }}</p>
-          </article>
-          <article v-if="recentRiskMessage" class="notice-card notice-card--warning">
-            <strong>过程核验</strong>
-            <p>{{ recentRiskMessage }}</p>
-          </article>
+          <p class="section-copy">{{ activeQuestion?.description ?? "" }}</p>
         </section>
 
         <ExamQuestionPanel
@@ -225,9 +161,6 @@
             options: activeQuestion.options
           }"
           :model-value="store.answers[activeQuestion.id]"
-          :progress-label="`第 ${currentQuestionNumber} / ${questions.length} 题`"
-          :completion-label="questionCompletionLabel(activeQuestion)"
-          :autosave-label="autosaveStatusLabel"
           @update:model-value="store.upsertDraftAnswer(activeQuestion.id, $event)"
         />
 
@@ -241,8 +174,6 @@
           :code="codeValue(activeQuestion)"
           :run-input="runInput"
           :busy-mode="busyMode"
-          :progress-label="`第 ${currentQuestionNumber} / ${questions.length} 题`"
-          :autosave-label="autosaveStatusLabel"
           :run-feedback="activeQuestion.id === runFeedback?.questionId ? runFeedback : undefined"
           :submit-feedback="activeQuestion.id === submitFeedback?.questionId ? submitFeedback : undefined"
           @update:code="updateCodeAnswer(activeQuestion.id, $event)"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import time
 from collections import Counter
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
@@ -233,6 +235,11 @@ class GatewayDemoStore:
             self.exam_tokens: dict[str, dict[str, Any]] = {}
             self.sessions: dict[str, dict[str, Any]] = {}
             self.results: dict[str, dict[str, Any]] = {}
+            self._ai_settings: dict[str, str] = {
+                "base_url": os.environ.get("AI_BASE_URL", ""),
+                "model": os.environ.get("AI_MODEL", ""),
+                "api_key": os.environ.get("AI_API_KEY", ""),
+            }
             self._counters = {
                 "task": 2,
                 "upload": 6,
@@ -1557,6 +1564,137 @@ class GatewayDemoStore:
                 {**event, "created_at": _isoformat(event["created_at"])}
                 for event in result["risk_events"]
             ],
+        }
+
+    # --- AI Settings ---
+
+    def get_ai_settings(self) -> dict[str, Any]:
+        api_key = self._ai_settings.get("api_key", "")
+        if api_key and len(api_key) > 4:
+            masked = f"sk-****{api_key[-4:]}"
+        elif api_key:
+            masked = "sk-****"
+        else:
+            masked = ""
+        return {
+            "base_url": self._ai_settings.get("base_url", ""),
+            "model": self._ai_settings.get("model", ""),
+            "api_key_masked": masked,
+            "configured": bool(api_key and self._ai_settings.get("base_url")),
+        }
+
+    def update_ai_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            if "base_url" in payload and payload["base_url"] is not None:
+                self._ai_settings["base_url"] = payload["base_url"]
+                os.environ["AI_BASE_URL"] = payload["base_url"]
+            if "model" in payload and payload["model"] is not None:
+                self._ai_settings["model"] = payload["model"]
+                os.environ["AI_MODEL"] = payload["model"]
+            if "api_key" in payload and payload["api_key"] is not None:
+                self._ai_settings["api_key"] = payload["api_key"]
+                os.environ["AI_API_KEY"] = payload["api_key"]
+        return self.get_ai_settings()
+
+    def test_ai_settings(self) -> dict[str, Any]:
+        from pre_screen_common.ai_client import AIClient
+
+        api_key = self._ai_settings.get("api_key", "")
+        base_url = self._ai_settings.get("base_url", "")
+        model = self._ai_settings.get("model", "")
+        if not api_key or not base_url or not model:
+            return {"ok": False, "error": "AI settings are not fully configured."}
+        try:
+            client = AIClient(api_key=api_key, base_url=base_url, model=model)
+            start = time.time()
+            client.simple_text_completion("请回复OK")
+            latency_ms = int((time.time() - start) * 1000)
+            return {"ok": True, "latency_ms": latency_ms}
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    # --- Result Review ---
+
+    def review_result(self, result_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = self.results.get(result_id)
+        if result is None:
+            raise LookupError("Result not found.")
+        with self._lock:
+            if "final_subjective_score" in payload and payload["final_subjective_score"] is not None:
+                result["summary"]["subjective_score"] = payload["final_subjective_score"]
+                result["summary"]["total_score"] = (
+                    result["summary"]["objective_score"]
+                    + payload["final_subjective_score"]
+                    + result["summary"]["coding_score"]
+                )
+            if "review_notes" in payload and payload["review_notes"] is not None:
+                result.setdefault("review_notes", []).extend(payload["review_notes"])
+            if "risk_override" in payload and payload["risk_override"] is not None:
+                result["risk_override"] = payload["risk_override"]
+            result["review_status"] = "reviewed"
+        return deepcopy(result)
+
+    def complete_screening(self, result_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        result = self.results.get(result_id)
+        if result is None:
+            raise LookupError("Result not found.")
+        decision = payload["decision"]
+        with self._lock:
+            result["screening_status"] = decision
+            if payload.get("review_notes"):
+                result.setdefault("review_notes", []).extend(payload["review_notes"])
+            candidate_id = result["candidate_id"]
+            candidate = self.candidates.get(candidate_id)
+            if candidate:
+                if decision == "pass":
+                    candidate["status"] = "已完成筛选"
+                else:
+                    candidate["status"] = "已淘汰"
+        return {
+            "result_id": result_id,
+            "candidate_id": result["candidate_id"],
+            "decision": decision,
+            "completed_at": _isoformat(_utcnow()),
+        }
+
+    # --- Exam Monitor ---
+
+    def list_monitor_sessions(self) -> dict[str, Any]:
+        items = []
+        for session in self.sessions.values():
+            if session["status"] != "in_progress":
+                continue
+            candidate = self.candidates.get(session["candidate_id"])
+            paper = self.papers.get(session["paper_id"])
+            answered_count = len(session.get("answers", {}))
+            total_questions = len(paper["questions"]) if paper else 0
+            items.append({
+                "session_id": session["session_id"],
+                "candidate_name": candidate["name"] if candidate else "Unknown",
+                "paper_title": paper["title"] if paper else "Unknown",
+                "status": session["status"],
+                "started_at": _isoformat(session["started_at"]),
+                "expires_at": _isoformat(session["expires_at"]),
+                "answered_count": answered_count,
+                "total_questions": total_questions,
+                "last_heartbeat_at": _isoformat(session["last_heartbeat_at"]),
+                "risk_event_count": len(session.get("risk_events", [])),
+            })
+        return {"items": items, "total": len(items)}
+
+    def force_submit_session(self, session_id: str) -> dict[str, Any]:
+        session = self.sessions.get(session_id)
+        if session is None:
+            raise LookupError("Session not found.")
+        if session["status"] != "in_progress":
+            raise ValueError("Session is not active.")
+        token = session["token"]
+        self.submit_exam(token)
+        submitted_at = session["submitted_at"]
+        return {
+            "session_id": session_id,
+            "submitted_at": _isoformat(submitted_at),
+            "status": "submitted",
         }
 
     def _require_active_session(self, token: str) -> dict[str, Any]:

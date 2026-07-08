@@ -52,6 +52,23 @@ class PublishPaperRequest(BaseModel):
     duration_minutes: int | None = Field(default=None, ge=1, le=240)
 
 
+class UpdateAISettingsRequest(BaseModel):
+    base_url: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+
+
+class ReviewResultRequest(BaseModel):
+    final_subjective_score: int | None = None
+    review_notes: list[str] | None = None
+    risk_override: str | None = None
+
+
+class CompleteScreeningRequest(BaseModel):
+    decision: str = Field(..., pattern="^(pass|reject)$")
+    review_notes: list[str] | None = None
+
+
 def _extract_bearer_token(authorization: str | None) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token.")
@@ -227,5 +244,58 @@ async def list_results(status: str | None = None, task_id: str | None = None) ->
 async def get_result(result_id: str) -> dict:
     try:
         return gateway_demo_store.get_result(result_id)
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+# --- AI Settings ---
+
+
+@router.get("/settings/ai")
+async def get_ai_settings() -> dict:
+    return gateway_demo_store.get_ai_settings()
+
+
+@router.put("/settings/ai")
+async def update_ai_settings(request: UpdateAISettingsRequest) -> dict:
+    return gateway_demo_store.update_ai_settings(request.model_dump(exclude_none=True))
+
+
+@router.post("/settings/ai/test")
+async def test_ai_settings() -> dict:
+    return gateway_demo_store.test_ai_settings()
+
+
+# --- Result Review & Screening Completion ---
+
+
+@router.put("/results/{result_id}/review")
+async def review_result(result_id: str, request: ReviewResultRequest) -> dict:
+    try:
+        return gateway_demo_store.review_result(result_id, request.model_dump())
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+@router.post("/results/{result_id}/complete-screening")
+async def complete_screening(result_id: str, request: CompleteScreeningRequest) -> dict:
+    try:
+        return gateway_demo_store.complete_screening(result_id, request.model_dump())
+    except Exception as exc:  # pragma: no cover
+        raise _translate_store_error(exc) from exc
+
+
+# --- Exam Monitor ---
+
+
+@router.get("/monitor/sessions")
+async def list_monitor_sessions() -> dict:
+    return gateway_demo_store.list_monitor_sessions()
+
+
+@router.post("/monitor/sessions/{session_id}/force-submit")
+async def force_submit_session(session_id: str) -> dict:
+    try:
+        return gateway_demo_store.force_submit_session(session_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc

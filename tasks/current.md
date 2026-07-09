@@ -1,25 +1,43 @@
 # Current Status Snapshot
 
-> **Status**: Active — production cutover  
+> **Status**: Active cutover — durable screening loop landed  
 > **Updated At**: 2026-07-09  
 > **Active Plan**: `plans/plan-20260709-production-cutover.md`
 
-## Latest
+## Already done
 
-Durable **tasks / uploads / candidates / AI settings / auth** on Postgres + MinIO when `STORE_BACKEND=postgres` (compose default).
+| Slice | Status |
+|-------|--------|
+| Phase 0–1 schema/status/db | Done |
+| 2.1 Auth | Done |
+| 2.2 Tasks | Done |
+| 2.3 Uploads + parse job + MinIO | Done |
+| 2.4 Candidates | Done |
+| 2.5 Papers generate/get/update/publish | Done (`ExamRepository`) |
+| 2.6 Exam start/heartbeat/answer/submit | Done |
+| 2.7 Coding submit persistence | Done (Judge0 still external) |
+| 2.8 Results + review + complete-screening | Done |
+| 2.9 Risk events + monitor list | Done |
+| 2.10 AI settings | Done |
+| Phase 4.1–4.3 FE product gaps | Done earlier |
 
-Restarting gateway via `dev-up` no longer wipes uploaded resumes (MinIO volume + DB).
+## Still open
 
-Still memory/demo for: papers generate/publish, exam session, scoring results, monitor (Phase 2.5–2.9).
+- Phase 3: remove `demo_store` / seed isolation  
+- Phase 4.4 error-state polish  
+- Phase 5 workers / observability / runbooks  
+- Deferred: notifications, avatar/password, WebSocket monitor  
 
-## How to run durable mode
+## Runtime
 
 ```bash
-bash scripts/flyway-migrate.sh   # or uv run python scripts/apply-sql-migrations.py
-bash scripts/dev-up.sh           # STORE_BACKEND=postgres by default
+bash scripts/flyway-migrate.sh   # or apply-sql-migrations.py
+# STORE_BACKEND=postgres (compose default)
+bash scripts/dev-up.sh
 ```
 
-## Next
+## Verification
 
-- Phase 2.5–2.9：papers / sessions / results / risk 落库  
-- Phase 3：拆除 demo_store  
+- `tests/services/test_postgres_exam_loop.py` — durable paper→exam→review  
+- `tests/services/test_postgres_candidate_store.py` — upload/candidate  
+- Memory gateway routes still pass with forced `STORE_BACKEND=memory`  

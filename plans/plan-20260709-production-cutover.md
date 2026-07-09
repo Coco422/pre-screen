@@ -131,18 +131,24 @@ Web POST /api/admin/tasks/:id/uploads
 ### Phase 2 — 仓储替换（按依赖序，4–6d）
 
 原则：**接口行为不变，替换存储**；每个子切片可单独合并。  
-开关：`STORE_BACKEND=memory|postgres`（默认 memory 保留 demo seed）。
+开关：`STORE_BACKEND=memory|postgres`（compose 默认 **postgres**）。
 
 - [x] 2.1 **Auth**：login / me → DB；bootstrap admin（env）；`GatewayStoreRouter` 路由
 - [x] 2.2 **Tasks**：create/list/get task → Postgres repo
 - [x] 2.3 **Resume parse job**：upload 元数据 + 异步 parse 写 `upload_jobs` / candidate profile（线程内，非 Celery）
 - [x] 2.4 **Candidates**：list/detail/update 读 DB；PDF 存 MinIO 并流式返回
-- [ ] 2.5 **Papers**：generate/update/get/publish + invitation token/code_hash 落库
-- [ ] 2.6 **Exam session**：start、heartbeat、save_answer、submit 落库
-- [ ] 2.7 **Coding**：run/submit 仍调 Judge0；submission 结果落库
-- [ ] 2.8 **Scoring results**：submit 后写 result；review / complete-screening 落库
-- [ ] 2.9 **Risk**：events 落库；monitor list 读 DB
+- [x] 2.5 **Papers**：generate/update/get/publish + invitation token/code_hash 落库（`ExamRepository`）
+- [x] 2.6 **Exam session**：start、heartbeat、save_answer、submit 落库
+- [x] 2.7 **Coding**：run/submit 仍调 Judge0；submission 写 `judge.submissions` + session answers
+- [x] 2.8 **Scoring results**：submit 写 `scoring.results`；review / complete-screening 落库
+- [x] 2.9 **Risk**：events 写 `risk.events` + session jsonb；monitor list 读 DB
 - [x] 2.10 **AI settings**：Postgres repo + router 切换
+
+## Deviations
+
+- Compose/default `STORE_BACKEND` is **postgres** (was plan text “default memory”); memory remains opt-in for seed demos.
+- Paper/exam durability proven via new `ExamRepository` instance after commit (not full docker recreate); uses real Postgres+MinIO.
+- Host SQL apply (`scripts/apply-sql-migrations.py`) preferred over Docker Flyway when volume mount to `/Volumes` fails.
 
 **Exit**：Gateway 路径仍通；`demo_store` 业务字典可标记 deprecated；**杀 gateway 进程再启，数据仍在**。
 

@@ -10,10 +10,28 @@ from services.gateway.app.main import app
 
 
 @pytest.fixture(autouse=True)
-def reset_gateway_demo_store():
+def reset_gateway_demo_store(monkeypatch):
+    # Memory-path contract tests must not pick up developer .env STORE_BACKEND=postgres.
+    monkeypatch.setenv("STORE_BACKEND", "memory")
+    monkeypatch.setenv(
+        "POSTGRES_DSN", "postgresql+psycopg://postgres:postgres@localhost:5432/prescreen"
+    )
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("MINIO_ENDPOINT", "http://localhost:9000")
+    monkeypatch.setenv("MINIO_ACCESS_KEY", "minioadmin")
+    monkeypatch.setenv("MINIO_SECRET_KEY", "minioadmin")
+    monkeypatch.setenv("MINIO_BUCKET_RESUMES", "resumes")
+    monkeypatch.setenv("JUDGE0_BASE_URL", "http://judge0:2358")
+    from pre_screen_common.db import reset_engine_cache
+    from pre_screen_common.settings import reset_settings_cache
+
+    reset_settings_cache()
+    reset_engine_cache()
     gateway_demo_store.reset()
     yield
     gateway_demo_store.reset()
+    reset_settings_cache()
+    reset_engine_cache()
 
 
 def _build_resume_pdf_bytes() -> bytes:

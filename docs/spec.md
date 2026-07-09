@@ -1,8 +1,9 @@
 # Product Spec: Pre-Screen
 
 > **Status**: Active
-> **Last Updated**: 2026-07-07
+> **Last Updated**: 2026-07-09
 > **Owner**: Ray
+> **Implementation stage**: MVP demo-capable; production cutover plan active (`plans/plan-20260709-production-cutover.md`)
 
 ## Product Outcome
 
@@ -42,24 +43,32 @@
 
 ## 页面结构
 
-| 路由 | 功能 |
-|------|------|
-| `/login` | HR 登录 |
-| `/admin/dashboard` | 工作台（指标 + 待处理列表） |
-| `/admin/tasks` | 筛选任务中心 |
-| `/admin/tasks/new` | 新建筛选任务 |
-| `/admin/tasks/:id` | 任务详情（上传简历 → 解析 → 生成考卷 → 发卷） |
-| `/admin/candidates` | 候选人池 |
-| `/admin/candidates/:id` | 候选人详情（画像 + PDF 原件 + 操作） |
-| `/admin/candidates/:id/edit` | 编辑画像 |
-| `/admin/papers/:id` | 考卷编辑 |
-| `/admin/results` | 结果中心 |
-| `/admin/results/:id` | 结果详情 |
-| `/exam/:token/start` | 考试入口 |
-| `/exam/:token/session` | 在线作答 |
-| `/exam/:token/submitted` | 提交完成 |
+| 路由 | 功能 | 实现备注（2026-07-09） |
+|------|------|------------------------|
+| `/login` | HR 登录 | ✅ |
+| `/admin/dashboard` | 工作台（指标 + 待处理列表） | ✅ |
+| `/admin/tasks` | 筛选任务中心 | ✅ |
+| `/admin/tasks/new` | 新建筛选任务 | ✅ |
+| `/admin/tasks/:id` | 任务详情（上传简历 → 解析 → 生成考卷 → 发卷） | ✅ |
+| `/admin/candidates` | 候选人池 | ✅ |
+| `/admin/candidates/:id` | 候选人详情（画像 + PDF 原件 + 操作） | ✅ |
+| `/admin/candidates/:id/edit` | 编辑画像 | ✅ |
+| `/admin/papers/:id` | 考卷编辑 | ✅；列表 `/admin/papers` 仍为 Placeholder |
+| `/admin/results` | 结果中心 | ✅ |
+| `/admin/results/:id` | 结果详情 | ✅ 查看；修分/归档前端未接 |
+| `/admin/settings` | AI 模型配置 | ✅ |
+| `/admin/monitor` | 考试监控 | 后端 API 有，页面未做 |
+| `/exam/:token` | 考试壳（验证 + 作答 + 已交卷） | ✅ ExamShell；`/start` `/session` `/submitted` redirect 到此 |
+
+接口与实现形态审计：`docs/page-api/AUDIT.md`。
+
+## 实现形态（摘要）
+
+- **当前**：Gateway `demo_store` 内存编排 + 进程内复用 resume/exam/scoring 领域逻辑；主链路可演示。
+- **目标**：Postgres 权威仓储、异步解析、MinIO 文件权威、薄 BFF；见 production-cutover plan。
 
 ## Open Questions
 
-- 主观题 AI 评分是否需要 HR 二次确认
+- 主观题 AI 评分是否需要 HR 二次确认（后端已支持 review；产品默认倾向：需要）
 - 是否需要批量对比多个候选人的结果
+- 生产化是否在落库后再拆独立服务进程（plan 推荐：先仓储，后进程）

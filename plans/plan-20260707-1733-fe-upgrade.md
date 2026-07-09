@@ -1,13 +1,15 @@
 # Plan: 前端文案精简 + 功能梳理 + 布局优化
 
-> **Status**: Draft
+> **Status**: Done
 > **Created**: 20260707-1733
+> **Completed**: 2026-07-08
 > **Slug**: fe-upgrade
 > **Artifact Level**: work-package
 > **Promotion Reason**: 前端体验与产品语气不匹配，功能边界不清晰
 > **Verification Boundary**: `pnpm --filter web build` 通过 + 手动浏览各页面无文案遗漏
 > **Rollback Surface**: git revert 单 commit
 > **Spec**: `docs/spec.md`
+> **Evidence**: commits `6310544`, `f851651`, `e207d98` 等（strip verbose copy / simplify layout）
 
 ## 问题摘要
 
@@ -83,12 +85,12 @@
 
 ## 四、Task Breakdown
 
-- [ ] 1. AdminLayout：文案精简 + 删除 sidebar 叙事段落 + 删除硬编码 metric
-- [ ] 2. CandidateListView：砍 hero 叙事区、重构顶部为纯 metrics 行、pill/loading 文案替换
-- [ ] 3. CandidateDetailView：pill 文案替换 + loading 文案精简
-- [ ] 4. PaperEditorView：删 head 叙事 + pill 中文化 + loading 精简
-- [ ] 5. ExamShellView：删 intro-card section + sidebar 叙事删除 + pill 中文化
-- [ ] 6. 验证 build 通过 + 各页面视觉检查无残留碎碎念
+- [x] 1. AdminLayout：文案精简 + 删除 sidebar 叙事段落 + 删除硬编码 metric
+- [x] 2. CandidateListView：砍 hero 叙事区、重构顶部为纯 metrics 行、pill/loading 文案替换
+- [x] 3. CandidateDetailView：pill 文案替换 + loading 文案精简
+- [x] 4. PaperEditorView：删 head 叙事 + pill 中文化 + loading 精简
+- [x] 5. ExamShellView：删 intro-card section + sidebar 叙事删除 + pill 中文化
+- [x] 6. 验证 build 通过 + 各页面视觉检查无残留碎碎念
 
 ---
 

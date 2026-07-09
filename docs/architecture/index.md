@@ -4,9 +4,10 @@
 
 ## Current Snapshot
 
-- Latest snapshot: (none yet)
-- Semantic diagram source: (none yet)
+- Latest snapshot: [2026-07-09 MVP demo gateway](snapshots/2026-07-09-mvp-demo-gateway.md)
+- Semantic diagram source: snapshot 内 topology（Mermaid 可后续补）
 - Latest human diagram: (none yet)
+- Active cutover plan: `plans/plan-20260709-production-cutover.md`
 
 ## Architecture Drift Flow
 

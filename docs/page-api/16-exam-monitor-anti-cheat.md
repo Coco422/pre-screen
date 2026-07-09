@@ -1,9 +1,23 @@
 # 16. 考试实时监控与防作弊
 
-- 路由：`/admin/monitor`
+- 路由：`/admin/monitor`（**前端尚未实现**）
 - 页面目标：管理员实时查看所有进行中考试的状态，发现异常行为及时干预。
+- 对齐更新：2026-07-09
 
-## 实时连接设计
+## 实现状态（分层）
+
+| 层级 | 状态 |
+|------|------|
+| 考生 HTTP 心跳 / 风控事件 | ✅ 已有（ExamShell + public API） |
+| `GET /api/admin/monitor/sessions` | ✅ Gateway 已有 |
+| `POST /api/admin/monitor/sessions/:id/force-submit` | ✅ Gateway 已有 |
+| 管理端监控页面 | ❌ 无路由 / 无视图 |
+| WebSocket 双向通道 / Monitor Hub | ❌ 仅本设计文档 |
+| 高级防作弊（签名、设备指纹、暂停考试等） | ❌ 设计目标，未实现 |
+
+**推荐落地顺序**：先做 HTTP 轮询监控页 + force-submit 接线 → 再考虑 WebSocket 升级（见 production-cutover 后置项）。
+
+## 实时连接设计（目标形态，未实现）
 
 ### 架构
 
@@ -72,12 +86,14 @@
 
 ### 接口
 
-| Method | Path | 用途 |
-|--------|------|------|
-| `GET` | `/api/admin/monitor/sessions` | 获取所有活跃考试会话 |
-| `GET` | `/api/admin/monitor/sessions/:sessionId` | 单个会话详情 |
-| `POST` | `/api/admin/monitor/sessions/:sessionId/force-submit` | 强制交卷 |
-| `POST` | `/api/admin/monitor/sessions/:sessionId/pause` | 暂停 |
+| Method | Path | 状态 | 用途 |
+|--------|------|------|------|
+| `GET` | `/api/admin/monitor/sessions` | 已有 / 前端未接 | 获取活跃考试会话 |
+| `GET` | `/api/admin/monitor/sessions/:sessionId` | 建议新增 | 单个会话详情 |
+| `POST` | `/api/admin/monitor/sessions/:sessionId/force-submit` | 已有 / 前端未接 | 强制交卷 |
+| `POST` | `/api/admin/monitor/sessions/:sessionId/pause` | 建议新增 | 暂停 |
+| `POST` | `/api/admin/monitor/sessions/:sessionId/extend` | 建议新增 | 延长时长 |
+| WebSocket `/ws/admin/monitor` | — | 建议新增（P2） | 实时推送 |
 | `POST` | `/api/admin/monitor/sessions/:sessionId/extend` | 延长时间 |
 | `POST` | `/api/admin/monitor/sessions/:sessionId/invalidate` | 标记无效 |
 | WebSocket | `/ws/admin/monitor` | 实时事件流 |

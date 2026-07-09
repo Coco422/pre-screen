@@ -1,25 +1,42 @@
 # Pre-Screen
 
-Pre-Screen is an MVP for technical candidate screening. This repository starts with the local
-development foundation, shared backend settings, and the local infrastructure needed for
-PostgreSQL, Redis, and MinIO. Judge0 is developed against a dedicated AMD Linux host. The
-application services and web app are added in later
-tasks.
+技术岗招聘智能初筛平台（本地部署）。HR 上传简历 → 多模态解析与画像 → AI 辅助出题 → 发卷 → 候选人在线考试（含 Judge0 代码题）→ 评分与风控。
+
+## 当前阶段（2026-07-09）
+
+| 维度 | 状态 |
+|------|------|
+| 产品主链路 | 可用（演示 / 内网联调） |
+| 对外 API | Gateway `/api/admin/*` + `/api/public/*` 契约较完整 |
+| 实现形态 | **Demo 编排**：`services/gateway` 内 `demo_store` 内存权威 |
+| 生产化 | Active plan：[`plans/plan-20260709-production-cutover.md`](plans/plan-20260709-production-cutover.md) |
+
+权威文档：
+
+- 产品：`docs/spec.md`
+- 页面/接口：`docs/page-api/` + [`docs/page-api/AUDIT.md`](docs/page-api/AUDIT.md)
+- 架构快照：`docs/architecture/snapshots/2026-07-09-mvp-demo-gateway.md`
+- 任务快照：`tasks/current.md`
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` and fill in any real credentials you need.
-2. Install dependencies with `uv sync --group dev`.
-3. Start the local stack with `bash scripts/dev-up.sh`.
-4. Run tests with `uv run pytest`.
+1. Copy `.env.example` to `.env` and fill credentials（AI key、Judge0 等）。
+2. Python：`uv sync --group dev`
+3. Web：`cd apps/web && pnpm install`（或沿用仓库锁文件工具）
+4. 起依赖与网关：`bash scripts/dev-up.sh`
+5. 迁移（按需）：`bash scripts/flyway-migrate.sh`
+6. 测试：`uv run pytest`；前端在 `apps/web` 内按 package scripts
 
-## Judge0 note
+默认入口：
 
-macOS arm64 development uses the shared Judge0 host at `http://192.168.100.189:2360` by default.
-This avoids Docker Desktop issues with `isolate` and cgroup support.
+- Web：经 nginx 或 Vite dev（见 `scripts/dev-up.sh` / compose）
+- Gateway：`http://localhost:8000`（`/healthz`）
 
-If you later need to boot the bundled local Judge0 stack on an AMD Linux host, enable the
-`judge0-local` compose profile explicitly:
+## Judge0
+
+macOS arm64 默认使用共享 Judge0 host（见 `.env.example` / compose 中 `JUDGE0_BASE_URL`），避免 Docker Desktop 对 isolate/cgroup 的限制。
+
+若在 AMD Linux 上启用捆绑 Judge0：
 
 ```bash
 COMPOSE_PROFILES=judge0-local docker compose up -d judge0-db judge0-redis judge0 judge0-workers judge0-init
@@ -27,7 +44,26 @@ COMPOSE_PROFILES=judge0-local docker compose up -d judge0-db judge0-redis judge0
 
 ## Layout
 
-- `packages/backend-common`: shared backend settings used by the bootstrap test.
-- `infra`: Dockerfiles and Nginx config for the local development scaffolding.
-- `scripts`: helper scripts for local development.
-- `tests`: the Task 1 settings test.
+| 路径 | 说明 |
+|------|------|
+| `apps/web` | Vue 3 管理端 + 考试端 |
+| `services/gateway` | 对外 BFF（当前含 demo_store） |
+| `services/resume` | 简历解析领域与 API |
+| `services/exam` | 模板/试卷/会话领域与 API |
+| `services/judge_bridge` | Judge0 桥接 |
+| `services/scoring` | 评分领域 |
+| `services/risk` | 风控事件 |
+| `packages/backend-common` | 配置、AI/Judge0 客户端、app factory |
+| `database/flyway` | 分 schema 迁移（resume 较完整，其余待 production plan） |
+| `docs/` | 规格、page-api、架构、研究 |
+| `plans/` | 执行计划（含 production-cutover） |
+| `tasks/` | current / todos / lessons |
+| `scripts/` | dev-up、migrate、verify、烟测 |
+| `infra/` | Dockerfiles、nginx、Judge0 |
+| `deploy/` | runbooks / checklists（运维） |
+
+## Development notes
+
+- 前端调用统一走 Gateway；不要假设浏览器直连各微服务。
+- 改接口时同步 `docs/page-api/` 与 `AUDIT.md`。
+- 非琐碎改动前读 `AGENTS.md` / `CLAUDE.md` 与 active plan Task Breakdown。

@@ -1,8 +1,10 @@
 # Plan: 第二轮前端文案/布局精简
 
-> **Status**: Draft
+> **Status**: Done
 > **Created**: 20260707
+> **Completed**: 2026-07-08
 > **Scope**: 清理 PR 带来的碎碎念 + 布局精简
+> **Evidence**: commit `6310544` 等
 
 ## 改动清单
 
@@ -31,9 +33,9 @@
 - ExamStartView / ExamSessionView / ExamSubmittedView: 这三个 placeholder 路由其实已被 ExamShellView 内部 state 替代，路由里改为 redirect 到 `/exam/:token`
 
 ## Task Breakdown
-- [ ] ExamShellView 精简
-- [ ] ExamQuestionPanel 删 helperCopy + status bar
-- [ ] PaperEditorView + admin loading 文案
-- [ ] TaskDetailView 上传提示
-- [ ] Placeholder 路由清理
-- [ ] Build 验证
+- [x] ExamShellView 精简
+- [x] ExamQuestionPanel 删 helperCopy + status bar
+- [x] PaperEditorView + admin loading 文案
+- [x] TaskDetailView 上传提示
+- [x] Placeholder 路由清理（exam start/session/submitted → redirect ExamShell）
+- [x] Build 验证

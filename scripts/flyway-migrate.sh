@@ -20,7 +20,7 @@ else
   db_host="${FLYWAY_DB_HOST:-host.docker.internal}"
 fi
 
-for service in auth resume exam judge scoring risk; do
+for service in app auth resume exam judge scoring risk; do
   if [[ -n "$docker_network_mode" ]]; then
     docker run --rm \
       --network "$docker_network_mode" \

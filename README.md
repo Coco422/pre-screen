@@ -8,8 +8,8 @@
 |------|------|
 | 产品主链路 | 可用（演示 / 内网联调） |
 | 对外 API | Gateway `/api/admin/*` + `/api/public/*` 契约较完整 |
-| 实现形态 | **Demo 编排**：`services/gateway` 内 `demo_store` 内存权威 |
-| 生产化 | Active plan：[`plans/plan-20260709-production-cutover.md`](plans/plan-20260709-production-cutover.md) |
+| 实现形态 | 默认 `STORE_BACKEND=memory`（demo_store seed）；可切 `postgres` 仓储路径 |
+| 生产化 | Active plan：[`plans/plan-20260709-production-cutover.md`](plans/plan-20260709-production-cutover.md)（Phase 0–1 + 部分 2/4 已落地） |
 
 权威文档：
 
@@ -24,8 +24,9 @@
 2. Python：`uv sync --group dev`
 3. Web：`cd apps/web && pnpm install`（或沿用仓库锁文件工具）
 4. 起依赖与网关：`bash scripts/dev-up.sh`
-5. 迁移（按需）：`bash scripts/flyway-migrate.sh`
-6. 测试：`uv run pytest`；前端在 `apps/web` 内按 package scripts
+5. 迁移：`bash scripts/flyway-migrate.sh`（生产路径必需）
+6. 可选：`.env` 设 `STORE_BACKEND=postgres` 启用 Auth/Tasks/AI settings 持久化路径
+7. 测试：`uv run pytest`；前端在 `apps/web` 内按 package scripts
 
 默认入口：
 

@@ -124,14 +124,15 @@ export const routes: RouteRecordRaw[] = [
       {
         path: "risk",
         name: "admin-risk",
+        redirect: "/admin/monitor"
+      },
+      {
+        path: "monitor",
+        name: "admin-monitor",
         meta: {
-          title: "风险管理"
+          title: "考试监控"
         },
-        component: () => import("../views/shared/PlaceholderView.vue"),
-        props: {
-          description: "风险管理将在后续阶段重构。",
-          iconLabel: "Risk"
-        }
+        component: () => import("../views/admin/ExamMonitorView.vue")
       },
       {
         path: "settings",

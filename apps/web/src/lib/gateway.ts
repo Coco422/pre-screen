@@ -251,6 +251,8 @@ export type ResultDetail = {
     totalScore: number;
     riskSummary: Record<string, unknown>;
   };
+  reviewStatus?: string;
+  reviewNotes?: string[];
   answers: Array<{
     questionId: string;
     title: string;
@@ -276,6 +278,19 @@ export type ResultDetail = {
       score: number;
     }>;
   } | null;
+};
+
+export type MonitorSession = {
+  sessionId: string;
+  candidateName: string;
+  paperTitle: string;
+  status: string;
+  startedAt: string;
+  expiresAt: string;
+  answeredCount: number;
+  totalQuestions: number;
+  lastHeartbeatAt: string | null;
+  riskEventCount: number;
 };
 
 function mapProcessingStatus(input?: {
@@ -380,14 +395,34 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function readAdminAuthHeaders(): HeadersInit {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const raw = window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw) as AdminSession;
+    if (parsed.sessionToken) {
+      return { Authorization: `Bearer ${parsed.sessionToken}` };
+    }
+  } catch {
+    return {};
+  }
+  return {};
+}
+
 async function requestJson<T>(path: string, init?: RequestInit, fallback?: T): Promise<T> {
   try {
     const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
       headers: {
         ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...readAdminAuthHeaders(),
         ...(init?.headers ?? {})
-      },
-      ...init
+      }
     });
     if (!response.ok) {
       throw new Error(`Request failed with ${response.status}`);
@@ -1250,6 +1285,8 @@ export async function loadResultDetail(resultId: string): Promise<ResultDetail> 
       totalScore: response.summary.total_score,
       riskSummary: response.summary.risk_summary
     },
+    reviewStatus: (response as { review_status?: string }).review_status,
+    reviewNotes: (response as { review_notes?: string[] }).review_notes ?? [],
     answers: response.answers.map((item) => ({
       questionId: item.question_id ?? "",
       title: item.title,
@@ -1278,6 +1315,73 @@ export async function loadResultDetail(resultId: string): Promise<ResultDetail> 
         }
       : null
   };
+}
+
+export async function reviewResult(
+  resultId: string,
+  payload: {
+    finalSubjectiveScore?: number | null;
+    reviewNotes?: string[];
+    riskOverride?: string | null;
+  }
+): Promise<void> {
+  await requestJson(`/admin/results/${resultId}/review`, {
+    method: "PUT",
+    body: JSON.stringify({
+      final_subjective_score: payload.finalSubjectiveScore,
+      review_notes: payload.reviewNotes,
+      risk_override: payload.riskOverride
+    })
+  });
+}
+
+export async function completeScreening(
+  resultId: string,
+  payload: { decision: "pass" | "reject"; reviewNotes?: string[] }
+): Promise<void> {
+  await requestJson(`/admin/results/${resultId}/complete-screening`, {
+    method: "POST",
+    body: JSON.stringify({
+      decision: payload.decision,
+      review_notes: payload.reviewNotes
+    })
+  });
+}
+
+export async function loadMonitorSessions(): Promise<MonitorSession[]> {
+  const response = await requestJson<{
+    items: Array<{
+      session_id: string;
+      candidate_name: string;
+      paper_title: string;
+      status: string;
+      started_at: string;
+      expires_at: string;
+      answered_count: number;
+      total_questions: number;
+      last_heartbeat_at?: string | null;
+      risk_event_count: number;
+    }>;
+  }>("/admin/monitor/sessions", undefined, { items: [] });
+
+  return response.items.map((item) => ({
+    sessionId: item.session_id,
+    candidateName: item.candidate_name,
+    paperTitle: item.paper_title,
+    status: item.status,
+    startedAt: item.started_at,
+    expiresAt: item.expires_at,
+    answeredCount: item.answered_count,
+    totalQuestions: item.total_questions,
+    lastHeartbeatAt: item.last_heartbeat_at ?? null,
+    riskEventCount: item.risk_event_count
+  }));
+}
+
+export async function forceSubmitMonitorSession(sessionId: string): Promise<void> {
+  await requestJson(`/admin/monitor/sessions/${sessionId}/force-submit`, {
+    method: "POST"
+  });
 }
 
 export async function loadPublicExam(token: string): Promise<PublicExamPayload> {

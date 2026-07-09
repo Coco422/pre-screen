@@ -131,6 +131,44 @@
         </div>
       </div>
     </article>
+
+    <article class="glass-card detail-card review-panel">
+      <div class="panel-head">
+        <h3>评分复核</h3>
+        <AdminToneBadge
+          :label="result.reviewStatus === 'reviewed' ? '已复核' : '待复核'"
+          :tone="result.reviewStatus === 'reviewed' ? 'success' : 'warning'"
+        />
+      </div>
+
+      <div class="review-form">
+        <label class="field">
+          <span>主观题最终分</span>
+          <el-input-number v-model="finalSubjectiveScore" :min="0" :max="100" />
+        </label>
+        <label class="field">
+          <span>复核备注</span>
+          <el-input
+            v-model="reviewNotesText"
+            type="textarea"
+            :rows="3"
+            placeholder="可选，写入复核记录"
+          />
+        </label>
+        <div class="review-actions">
+          <button class="secondary-btn" type="button" :disabled="saving" @click="saveReview">
+            {{ saving ? "保存中..." : "保存修分" }}
+          </button>
+          <button class="primary-btn" type="button" :disabled="saving" @click="decide('pass')">
+            通过筛选
+          </button>
+          <button class="danger-btn" type="button" :disabled="saving" @click="decide('reject')">
+            淘汰
+          </button>
+        </div>
+        <p v-if="actionMessage" class="action-message" :class="actionMessageType">{{ actionMessage }}</p>
+      </div>
+    </article>
   </section>
 
   <section v-else class="glass-card detail-card">
@@ -146,11 +184,21 @@ import { RouterLink, useRoute } from "vue-router";
 import AdminScoreBar from "../../components/admin/AdminScoreBar.vue";
 import AdminToneBadge from "../../components/admin/AdminToneBadge.vue";
 import { describeScoreBand, summarizeRiskSummary, type AdminTone } from "../../components/admin/adminUi";
-import { loadResultDetail, type ResultDetail } from "../../lib/gateway";
+import {
+  completeScreening,
+  loadResultDetail,
+  reviewResult,
+  type ResultDetail
+} from "../../lib/gateway";
 
 const route = useRoute();
 const result = ref<ResultDetail | null>(null);
 const loadError = ref("");
+const finalSubjectiveScore = ref(0);
+const reviewNotesText = ref("");
+const saving = ref(false);
+const actionMessage = ref("");
+const actionMessageType = ref<"ok" | "err">("ok");
 
 const scoreBand = computed(() => describeScoreBand(result.value?.summary.totalScore ?? 0));
 const riskSummary = computed(() =>
@@ -221,6 +269,66 @@ function questionKindTone(kind: string): AdminTone {
   return "neutral";
 }
 
+async function reloadResult(resultId: string) {
+  result.value = await loadResultDetail(resultId);
+  finalSubjectiveScore.value = result.value.summary.subjectiveScore;
+  reviewNotesText.value = (result.value.reviewNotes ?? []).join("\n");
+  loadError.value = "";
+}
+
+async function saveReview() {
+  if (!result.value) {
+    return;
+  }
+  saving.value = true;
+  actionMessage.value = "";
+  try {
+    const notes = reviewNotesText.value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    await reviewResult(result.value.resultId, {
+      finalSubjectiveScore: finalSubjectiveScore.value,
+      reviewNotes: notes
+    });
+    await reloadResult(result.value.resultId);
+    actionMessage.value = "修分已保存";
+    actionMessageType.value = "ok";
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : "保存失败";
+    actionMessageType.value = "err";
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function decide(decision: "pass" | "reject") {
+  if (!result.value) {
+    return;
+  }
+  saving.value = true;
+  actionMessage.value = "";
+  try {
+    const notes = reviewNotesText.value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    await reviewResult(result.value.resultId, {
+      finalSubjectiveScore: finalSubjectiveScore.value,
+      reviewNotes: notes
+    });
+    await completeScreening(result.value.resultId, { decision, reviewNotes: notes });
+    await reloadResult(result.value.resultId);
+    actionMessage.value = decision === "pass" ? "已通过筛选" : "已淘汰";
+    actionMessageType.value = "ok";
+  } catch (error) {
+    actionMessage.value = error instanceof Error ? error.message : "操作失败";
+    actionMessageType.value = "err";
+  } finally {
+    saving.value = false;
+  }
+}
+
 watch(
   () => route.params.resultId,
   async (resultId) => {
@@ -230,8 +338,8 @@ watch(
     }
 
     try {
-      result.value = await loadResultDetail(resultId);
-      loadError.value = "";
+      await reloadResult(resultId);
+      actionMessage.value = "";
     } catch (error) {
       loadError.value = error instanceof Error ? error.message : "加载失败";
     }
@@ -312,6 +420,40 @@ watch(
   padding: 18px;
   border-radius: 18px;
   background: rgba(20, 33, 61, 0.04);
+}
+
+.review-form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: var(--ink-soft);
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.danger-btn {
+  border: 1px solid rgba(176, 45, 62, 0.35);
+  background: rgba(176, 45, 62, 0.08);
+  color: #8f1f2f;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.action-message.ok {
+  color: #1f6b3a;
+}
+
+.action-message.err {
+  color: #8f1f2f;
 }
 
 .answer-title {

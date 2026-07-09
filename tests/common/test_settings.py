@@ -14,6 +14,7 @@ def test_settings_build_service_urls_from_env(monkeypatch):
     monkeypatch.setenv("AI_BASE_URL", "https://aiapi.szmckj.cn")
     monkeypatch.setenv("AI_MODEL", "qwen3.6-35b-a3b")
     monkeypatch.setenv("JUDGE0_BASE_URL", "http://judge0:2358")
+    monkeypatch.setenv("STORE_BACKEND", "postgres")
 
     settings = AppSettings()
 
@@ -21,3 +22,4 @@ def test_settings_build_service_urls_from_env(monkeypatch):
     assert settings.resume_bucket == "resumes"
     assert settings.ai_base_url == "https://aiapi.szmckj.cn"
     assert settings.judge0_base_url == "http://judge0:2358"
+    assert settings.use_postgres_store is True

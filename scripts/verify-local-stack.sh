@@ -79,6 +79,13 @@ compose up -d --build --force-recreate --remove-orphans \
   web \
   nginx
 
+# Apply Flyway migrations when Docker + Postgres are reachable.
+if command -v docker >/dev/null 2>&1; then
+  if wait_for_command "postgres" compose exec -T postgres pg_isready -U postgres -d prescreen; then
+    bash "$repo_root/scripts/flyway-migrate.sh" || echo "warn: flyway migrate failed (non-fatal for memory backend)" >&2
+  fi
+fi
+
 wait_for_command "postgres ready" compose exec -T postgres pg_isready -U postgres -d prescreen
 wait_for_command "redis ready" compose exec -T redis redis-cli ping
 wait_for_http "minio live probe" "http://localhost:9000/minio/health/live" ""

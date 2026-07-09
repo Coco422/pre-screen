@@ -37,6 +37,7 @@ describe("router", () => {
     expect(childPaths).toContain("papers");
     expect(childPaths).toContain("results");
     expect(childPaths).toContain("risk");
+    expect(childPaths).toContain("monitor");
     expect(childPaths).toContain("settings");
   });
 

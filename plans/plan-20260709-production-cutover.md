@@ -1,6 +1,6 @@
 # Plan: 去 Demo → 生产形态 Cutover
 
-> **Status**: Active (Draft for approval)
+> **Status**: Active
 > **Created**: 2026-07-09
 > **Slug**: production-cutover
 > **Artifact Level**: work-package / multi-sprint
@@ -108,32 +108,33 @@ Web POST /api/admin/tasks/:id/uploads
 
 ### Phase 0 — 契约与基线（0.5–1d）
 
-- [ ] 0.1 冻结状态枚举文档：写入 `docs/spec.md` 或 `docs/architecture/domains/status-machine.md`，与 page-api 一致
-- [ ] 0.2 列出 `demo_store` 实体 → 目标表映射表（plan 附录 A）
-- [ ] 0.3 基线测试清单：现有 pytest + 关键 web vitest；记录 pass 集合
-- [ ] 0.4 增加「实现形态」断言到 AUDIT（已完成文档刷新；代码侧加 `docs` 链接即可）
+- [x] 0.1 冻结状态枚举文档：写入 `docs/architecture/domains/status-machine.md` + `pre_screen_common.status`
+- [x] 0.2 列出 `demo_store` 实体 → 目标表映射表（`docs/architecture/domains/entity-map.md`）
+- [x] 0.3 基线测试清单：`tests/common` + gateway routes + web router vitest 已绿
+- [x] 0.4 实现形态写入 AUDIT + architecture snapshot（文档 commit）
 
 **Exit**：映射表评审通过；主链路测试基线绿色。
 
 ### Phase 1 — 数据面：Schema + 公共 DB 访问（2–3d）
 
-- [ ] 1.1 `packages/backend-common`：DB engine/session 工厂（从 `POSTGRES_DSN`）
-- [ ] 1.2 Flyway `auth`：users / sessions（或 tokens）
-- [ ] 1.3 Flyway `exam`：templates、papers、questions(jsonb)、invitations、sessions、answer_drafts
-- [ ] 1.4 Flyway `scoring`：results、question_reviews、screening_decisions
-- [ ] 1.5 Flyway `risk`：risk_events、heartbeats（可合并粗表）
-- [ ] 1.6 Flyway 扩展 `resume`：与 task 关联（task_id / org 可选）、对齐 gateway 的 candidate 字段
-- [ ] 1.7 可选 `app`/`gateway` schema：screening_tasks、ai_settings
-- [ ] 1.8 `scripts/flyway-migrate.sh` 一键全 schema；接入 `verify-local-stack.sh`
+- [x] 1.1 `packages/backend-common`：DB engine/session 工厂（`pre_screen_common.db`）
+- [x] 1.2 Flyway `auth`：users / sessions（V2）
+- [x] 1.3 Flyway `exam`：templates、papers、invitations、sessions、answer_drafts（V2）
+- [x] 1.4 Flyway `scoring`：results（jsonb 含 reviews/notes）（V2）
+- [x] 1.5 Flyway `risk`：events（V2）
+- [x] 1.6 Flyway 扩展 `resume`：task 关联、profile/upload_jobs（V3）
+- [x] 1.7 `app` schema：screening_tasks、ai_settings、id_counters
+- [x] 1.8 `scripts/flyway-migrate.sh` 含 app；`verify-local-stack.sh` 尝试 migrate
 
-**Exit**：空库 migrate 成功；表可手工插入/查询。
+**Exit**：空库 migrate 成功；表可手工插入/查询。（需本机 Postgres 运行后验证）
 
 ### Phase 2 — 仓储替换（按依赖序，4–6d）
 
-原则：**接口行为不变，替换存储**；每个子切片可单独合并。
+原则：**接口行为不变，替换存储**；每个子切片可单独合并。  
+开关：`STORE_BACKEND=memory|postgres`（默认 memory 保留 demo seed）。
 
-- [ ] 2.1 **Auth**：login / me → DB；去掉明文 demo 账号硬编码（改 seed 或 env bootstrap admin）
-- [ ] 2.2 **Tasks + Uploads**：create/list/get task；upload 元数据落库；文件进 MinIO
+- [x] 2.1 **Auth**：login / me → DB；bootstrap admin（env）；`GatewayStoreRouter` 路由
+- [x] 2.2 **Tasks**：create/list/get task → Postgres repo（uploads 元数据表已建；上传写路径仍走 demo 编排，待 2.3）
 - [ ] 2.3 **Resume parse job**：status 机落库；worker 调现有 `parse_resume_file` + enrich；写 profile_json
 - [ ] 2.4 **Candidates**：list/detail/update 全读 DB；PDF 从 MinIO 流式返回
 - [ ] 2.5 **Papers**：generate/update/get/publish + invitation token/code_hash 落库
@@ -141,7 +142,7 @@ Web POST /api/admin/tasks/:id/uploads
 - [ ] 2.7 **Coding**：run/submit 仍调 Judge0；submission 结果落库
 - [ ] 2.8 **Scoring results**：submit 后写 result；review / complete-screening 落库
 - [ ] 2.9 **Risk**：events 落库；monitor list 读 DB
-- [ ] 2.10 **AI settings**：落库或加密配置表
+- [x] 2.10 **AI settings**：Postgres repo + router 切换
 
 **Exit**：Gateway 路径仍通；`demo_store` 业务字典可标记 deprecated；**杀 gateway 进程再启，数据仍在**。
 
@@ -156,9 +157,9 @@ Web POST /api/admin/tasks/:id/uploads
 
 ### Phase 4 — 产品闭环补齐（可与 Phase 2 并行，1–2d）
 
-- [ ] 4.1 前端 `ResultDetailView`：接 `PUT .../review` + `POST .../complete-screening`
-- [ ] 4.2 前端监控页 `/admin/monitor`：轮询 `GET .../monitor/sessions` + force-submit
-- [ ] 4.3 导航与权限：settings / monitor 入口一致
+- [x] 4.1 前端 `ResultDetailView`：接 `PUT .../review` + `POST .../complete-screening`
+- [x] 4.2 前端监控页 `/admin/monitor`：轮询 `GET .../monitor/sessions` + force-submit
+- [x] 4.3 导航与权限：monitor 入口接真页；settings 已有
 - [ ] 4.4 错误态：解析失败、AI 不可用、Judge0 超时 — 页面可见、可重试
 
 **Exit**：HR 不打开后端日志也能完成「修分 → 通过/淘汰」与「查看在考会话」。
@@ -169,8 +170,8 @@ Web POST /api/admin/tasks/:id/uploads
 - [ ] 5.2 可选：独立起 `resume`/`exam` 进程，Gateway 改 HTTP client（若 Phase 2 模块边界已清）
 - [ ] 5.3 结构化日志 + request_id 贯穿 upload→parse→publish
 - [ ] 5.4 备份/恢复 runbook 草稿（`deploy/runbooks/`）
-- [ ] 5.5 README / verify-local-stack 与真实启动路径一致
-- [ ] 5.6 架构 snapshot 写入 `docs/architecture/snapshots/`
+- [x] 5.5 README / verify-local-stack 部分对齐（migrate 钩子 + STORE_BACKEND env）
+- [x] 5.6 架构 snapshot 写入 `docs/architecture/snapshots/`
 
 **Exit**：文档描述的本地生产样形态可一键拉起；新人按 README 跑通主链路。
 

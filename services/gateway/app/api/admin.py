@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from services.gateway.app.domain.demo_store import gateway_demo_store
+from services.gateway.app.domain.store_router import gateway_store
 
 router = APIRouter(prefix="/admin", tags=["gateway-admin"])
 
@@ -88,7 +88,7 @@ def _translate_store_error(exc: Exception) -> HTTPException:
 @router.post("/session/login")
 async def login(request: LoginRequest) -> dict:
     try:
-        return gateway_demo_store.login(request.username, request.password)
+        return gateway_store.login(request.username, request.password)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -96,30 +96,30 @@ async def login(request: LoginRequest) -> dict:
 @router.get("/session/me")
 async def current_user(authorization: Annotated[str | None, Header()] = None) -> dict:
     try:
-        return gateway_demo_store.get_current_user(_extract_bearer_token(authorization))
+        return gateway_store.get_current_user(_extract_bearer_token(authorization))
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
 
 @router.get("/dashboard")
 async def get_dashboard() -> dict:
-    return gateway_demo_store.get_dashboard()
+    return gateway_store.get_dashboard()
 
 
 @router.get("/tasks")
 async def list_tasks(status: str | None = None, keyword: str | None = None) -> dict:
-    return gateway_demo_store.list_tasks(status=status, keyword=keyword)
+    return gateway_store.list_tasks(status=status, keyword=keyword)
 
 
 @router.post("/tasks", status_code=status.HTTP_201_CREATED)
 async def create_task(request: CreateTaskRequest) -> dict:
-    return gateway_demo_store.create_task(request.model_dump())
+    return gateway_store.create_task(request.model_dump())
 
 
 @router.get("/tasks/{task_id}")
 async def get_task(task_id: str) -> dict:
     try:
-        return gateway_demo_store.get_task(task_id)
+        return gateway_store.get_task(task_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -135,7 +135,7 @@ async def create_uploads(task_id: str, files: Annotated[list[UploadFile], File()
             }
         )
     try:
-        return gateway_demo_store.create_uploads(task_id, uploaded_items)
+        return gateway_store.create_uploads(task_id, uploaded_items)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -143,7 +143,7 @@ async def create_uploads(task_id: str, files: Annotated[list[UploadFile], File()
 @router.get("/uploads/{upload_id}")
 async def get_upload(upload_id: str) -> dict:
     try:
-        return gateway_demo_store.get_upload(upload_id)
+        return gateway_store.get_upload(upload_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -161,7 +161,7 @@ async def list_candidates(
     sort_by: str | None = None,
     order: str | None = None,
 ) -> dict:
-    return gateway_demo_store.list_candidates(
+    return gateway_store.list_candidates(
         task_id=task_id,
         role=role,
         status=status,
@@ -178,7 +178,7 @@ async def list_candidates(
 @router.get("/candidates/{candidate_id}")
 async def get_candidate(candidate_id: str) -> dict:
     try:
-        return gateway_demo_store.get_candidate(candidate_id)
+        return gateway_store.get_candidate(candidate_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -186,7 +186,7 @@ async def get_candidate(candidate_id: str) -> dict:
 @router.get("/candidates/{candidate_id}/resume.pdf")
 async def get_candidate_resume_pdf(candidate_id: str) -> FileResponse:
     try:
-        pdf_path = gateway_demo_store.get_candidate_pdf_path(candidate_id)
+        pdf_path = gateway_store.get_candidate_pdf_path(candidate_id)
     except Exception as exc:
         raise _translate_store_error(exc) from exc
     if not pdf_path:
@@ -197,7 +197,7 @@ async def get_candidate_resume_pdf(candidate_id: str) -> FileResponse:
 @router.put("/candidates/{candidate_id}")
 async def update_candidate(candidate_id: str, request: UpdateCandidateRequest) -> dict:
     try:
-        return gateway_demo_store.update_candidate(candidate_id, request.model_dump())
+        return gateway_store.update_candidate(candidate_id, request.model_dump())
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -205,7 +205,7 @@ async def update_candidate(candidate_id: str, request: UpdateCandidateRequest) -
 @router.post("/candidates/{candidate_id}/papers/generate", status_code=status.HTTP_201_CREATED)
 async def generate_paper(candidate_id: str) -> dict:
     try:
-        return gateway_demo_store.generate_paper(candidate_id)
+        return gateway_store.generate_paper(candidate_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -213,7 +213,7 @@ async def generate_paper(candidate_id: str) -> dict:
 @router.get("/papers/{paper_id}")
 async def get_paper(paper_id: str) -> dict:
     try:
-        return gateway_demo_store.get_paper(paper_id)
+        return gateway_store.get_paper(paper_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -221,7 +221,7 @@ async def get_paper(paper_id: str) -> dict:
 @router.put("/papers/{paper_id}")
 async def update_paper(paper_id: str, request: UpdatePaperRequest) -> dict:
     try:
-        return gateway_demo_store.update_paper(paper_id, request.model_dump())
+        return gateway_store.update_paper(paper_id, request.model_dump())
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -230,20 +230,20 @@ async def update_paper(paper_id: str, request: UpdatePaperRequest) -> dict:
 async def publish_paper(paper_id: str, request: PublishPaperRequest | None = None) -> dict:
     try:
         duration = request.duration_minutes if request else None
-        return gateway_demo_store.publish_paper(paper_id, duration)
+        return gateway_store.publish_paper(paper_id, duration)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
 
 @router.get("/results")
 async def list_results(status: str | None = None, task_id: str | None = None) -> dict:
-    return gateway_demo_store.list_results(status=status, task_id=task_id)
+    return gateway_store.list_results(status=status, task_id=task_id)
 
 
 @router.get("/results/{result_id}")
 async def get_result(result_id: str) -> dict:
     try:
-        return gateway_demo_store.get_result(result_id)
+        return gateway_store.get_result(result_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -253,17 +253,17 @@ async def get_result(result_id: str) -> dict:
 
 @router.get("/settings/ai")
 async def get_ai_settings() -> dict:
-    return gateway_demo_store.get_ai_settings()
+    return gateway_store.get_ai_settings()
 
 
 @router.put("/settings/ai")
 async def update_ai_settings(request: UpdateAISettingsRequest) -> dict:
-    return gateway_demo_store.update_ai_settings(request.model_dump(exclude_none=True))
+    return gateway_store.update_ai_settings(request.model_dump(exclude_none=True))
 
 
 @router.post("/settings/ai/test")
 async def test_ai_settings() -> dict:
-    return gateway_demo_store.test_ai_settings()
+    return gateway_store.test_ai_settings()
 
 
 # --- Result Review & Screening Completion ---
@@ -272,7 +272,7 @@ async def test_ai_settings() -> dict:
 @router.put("/results/{result_id}/review")
 async def review_result(result_id: str, request: ReviewResultRequest) -> dict:
     try:
-        return gateway_demo_store.review_result(result_id, request.model_dump())
+        return gateway_store.review_result(result_id, request.model_dump())
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -280,7 +280,7 @@ async def review_result(result_id: str, request: ReviewResultRequest) -> dict:
 @router.post("/results/{result_id}/complete-screening")
 async def complete_screening(result_id: str, request: CompleteScreeningRequest) -> dict:
     try:
-        return gateway_demo_store.complete_screening(result_id, request.model_dump())
+        return gateway_store.complete_screening(result_id, request.model_dump())
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
 
@@ -290,12 +290,12 @@ async def complete_screening(result_id: str, request: CompleteScreeningRequest) 
 
 @router.get("/monitor/sessions")
 async def list_monitor_sessions() -> dict:
-    return gateway_demo_store.list_monitor_sessions()
+    return gateway_store.list_monitor_sessions()
 
 
 @router.post("/monitor/sessions/{session_id}/force-submit")
 async def force_submit_session(session_id: str) -> dict:
     try:
-        return gateway_demo_store.force_submit_session(session_id)
+        return gateway_store.force_submit_session(session_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc

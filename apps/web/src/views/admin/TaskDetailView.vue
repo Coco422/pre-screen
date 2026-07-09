@@ -189,7 +189,9 @@
           </div>
 
           <div class="candidate-actions">
-            <RouterLink class="outline-btn inline-btn" :to="buildCandidateDetailPath(candidate.id)">详情</RouterLink>
+            <RouterLink class="outline-btn inline-btn" :to="buildCandidateDetailPath(candidate.id)">
+              详情 / 简历预览
+            </RouterLink>
             <button
               v-if="isPaperGenerating(candidate)"
               class="outline-btn inline-btn"

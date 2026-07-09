@@ -278,6 +278,10 @@ def test_gateway_hr_to_exam_review_flow(monkeypatch):
 
     assert candidate_detail_response.status_code == 200
     assert candidate_detail_response.json()["email"] == "candidate@example.com"
+    assert candidate_detail_response.json()["resume_pdf_url"] == f"/admin/candidates/{candidate_id}/resume.pdf"
+    pdf_response = client.get(f"/admin/candidates/{candidate_id}/resume.pdf")
+    assert pdf_response.status_code == 200
+    assert pdf_response.headers["content-type"].startswith("application/pdf")
 
     candidate_update_response = client.put(
         f"/admin/candidates/{candidate_id}",

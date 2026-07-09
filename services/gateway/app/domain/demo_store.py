@@ -882,6 +882,8 @@ class GatewayDemoStore:
                 ),
             }
             with self._lock:
+                # Keep PDF path on the candidate so detail preview can resolve after parse.
+                candidate["pdf_path"] = str(pdf_path)
                 self.candidates[candidate_id] = candidate
                 self.uploads[upload_id] = upload
             created_items.append(self._serialize_upload(upload))
@@ -1092,6 +1094,20 @@ class GatewayDemoStore:
         pdf_path = candidate.get("pdf_path")
         if pdf_path and Path(pdf_path).exists():
             return str(pdf_path)
+        # Fallback: resolve from the latest upload job for this candidate.
+        upload = self._get_candidate_upload(candidate)
+        if upload:
+            upload_path = upload.get("pdf_path")
+            if upload_path and Path(upload_path).exists():
+                candidate["pdf_path"] = str(upload_path)
+                return str(upload_path)
+        for item in self.uploads.values():
+            if item.get("candidate_id") != candidate_id:
+                continue
+            upload_path = item.get("pdf_path")
+            if upload_path and Path(upload_path).exists():
+                candidate["pdf_path"] = str(upload_path)
+                return str(upload_path)
         return None
 
     def update_candidate(self, candidate_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -2058,9 +2074,11 @@ class GatewayDemoStore:
             "paper_id": candidate["paper_ids"][-1] if candidate.get("paper_ids") else None,
             "invitation_token": self._find_candidate_invitation_token(candidate["candidate_id"]),
             "result_id": self._find_candidate_result_id(candidate["candidate_id"]),
-            "resume_pdf_url": f"/admin/candidates/{candidate['candidate_id']}/resume.pdf"
-            if candidate.get("pdf_path")
-            else None,
+            "resume_pdf_url": (
+                f"/admin/candidates/{candidate['candidate_id']}/resume.pdf"
+                if self.get_candidate_pdf_path(candidate["candidate_id"])
+                else None
+            ),
             "next_actions": next_actions,
         }
 

@@ -11,6 +11,23 @@
         <RouterLink class="detail-btn detail-btn--ghost" :to="{ name: 'admin-candidates' }">返回列表</RouterLink>
         <RouterLink class="detail-btn detail-btn--ghost" :to="editTarget">编辑画像</RouterLink>
         <button
+          v-if="profile.resumePdfUrl"
+          class="detail-btn detail-btn--ghost"
+          type="button"
+          @click="scrollToPdfPreview"
+        >
+          预览简历 PDF
+        </button>
+        <a
+          v-if="profile.resumePdfUrl"
+          class="detail-btn detail-btn--ghost"
+          :href="pdfSource"
+          target="_blank"
+          rel="noopener"
+        >
+          新窗口打开
+        </a>
+        <button
           v-if="isPaperGenerating"
           class="detail-btn detail-btn--ghost"
           type="button"
@@ -87,7 +104,27 @@
             <strong>{{ profile.name }}_简历.pdf</strong>
             <span>{{ profile.quality }}质量 · {{ profile.parseMetrics.confidence }}置信度</span>
           </div>
-          <RouterLink class="detail-inline-link" :to="editTarget">查看编辑稿</RouterLink>
+          <div class="resume-card__actions">
+            <button
+              v-if="profile.resumePdfUrl"
+              class="detail-inline-link"
+              type="button"
+              @click="scrollToPdfPreview"
+            >
+              预览 PDF
+            </button>
+            <a
+              v-if="profile.resumePdfUrl"
+              class="detail-inline-link"
+              :href="pdfSource"
+              target="_blank"
+              rel="noopener"
+            >
+              新窗口
+            </a>
+            <span v-else class="detail-inline-link detail-inline-link--muted">暂无原件</span>
+            <RouterLink class="detail-inline-link" :to="editTarget">编辑画像</RouterLink>
+          </div>
         </section>
 
         <section class="notes-block">
@@ -236,12 +273,25 @@
           </dl>
         </section>
 
-        <section class="resume-pdf-block">
-          <h3>简历原件</h3>
+        <section id="resume-pdf-preview" class="resume-pdf-block" ref="pdfPreviewEl">
+          <div class="resume-pdf-block__head">
+            <h3>简历原件预览</h3>
+            <a
+              v-if="profile.resumePdfUrl"
+              class="detail-inline-link"
+              :href="pdfSource"
+              target="_blank"
+              rel="noopener"
+            >
+              新窗口打开
+            </a>
+          </div>
           <div v-if="profile.resumePdfUrl" class="pdf-viewer">
             <VuePdfEmbed :source="pdfSource" class="pdf-embed" />
           </div>
-          <p v-else class="empty-copy">暂无 PDF 原件</p>
+          <p v-else class="empty-copy">
+            暂无 PDF 原件。请通过任务详情重新上传简历；演示种子数据没有真实文件。
+          </p>
         </section>
       </article>
     </section>
@@ -294,6 +344,7 @@ const profile = ref<CandidateDetail | null>(null);
 const loadError = ref("");
 const generating = ref(false);
 const actionHint = ref("");
+const pdfPreviewEl = ref<HTMLElement | null>(null);
 let latestRequestId = 0;
 let pollTimer: number | null = null;
 
@@ -408,6 +459,11 @@ const pdfSource = computed(() => {
   }
   return `/api${url}`;
 });
+
+function scrollToPdfPreview() {
+  const el = pdfPreviewEl.value ?? document.getElementById("resume-pdf-preview");
+  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 function readCandidateDraft(targetCandidateId: string): Partial<CandidateDraft> | null {
   if (typeof window === "undefined") {
@@ -859,20 +915,51 @@ watch(
   }
 }
 
+.resume-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.detail-inline-link {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: none;
+}
+
+.detail-inline-link--muted {
+  color: #8a9bb3;
+  cursor: default;
+}
+
 .resume-pdf-block {
   margin-top: 18px;
+  scroll-margin-top: 24px;
+}
+
+.resume-pdf-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .resume-pdf-block h3 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: #3a5070;
 }
 
 .pdf-viewer {
-  min-height: 400px;
-  max-height: 700px;
+  min-height: 480px;
+  max-height: 80vh;
   overflow: auto;
   border-radius: 10px;
   border: 1px solid #dde7f2;

@@ -56,8 +56,9 @@
 | `/admin/papers/:id` | 考卷编辑 | ✅；列表 `/admin/papers` 仍为 Placeholder |
 | `/admin/results` | 结果中心 | ✅ |
 | `/admin/results/:id` | 结果详情 | ✅ 查看；修分/归档前端未接 |
-| `/admin/settings` | AI 模型配置 | ✅ |
-| `/admin/monitor` | 考试监控 | 后端 API 有，页面未做 |
+| `/admin/settings` | 系统设置（AI / 账号占位 / 通知占位） | ✅ 壳 + AI 子页 |
+| `/admin/papers` | 考卷列表 | ✅ |
+| `/admin/monitor` | 考试监控 | ✅ HTTP 轮询页 |
 | `/exam/:token` | 考试壳（验证 + 作答 + 已交卷） | ✅ ExamShell；`/start` `/session` `/submitted` redirect 到此 |
 
 接口与实现形态审计：`docs/page-api/AUDIT.md`。

@@ -2,10 +2,17 @@
   <section class="glass-card result-list-page">
     <div class="page-head">
       <div>
-        <div class="pill">Results</div>
-        <h2 class="section-title page-title">已完成考卷</h2>
+        <h2 class="section-title page-title">结果中心</h2>
+        <p class="page-meta">含已通过 / 已淘汰档案，可随时回看答卷与评分</p>
       </div>
-      <RouterLink class="secondary-btn" :to="{ name: 'admin-workbench' }">返回工作台</RouterLink>
+      <div class="head-actions">
+        <el-select v-model="decisionFilter" clearable placeholder="全部结论" style="width: 140px">
+          <el-option label="待复核" value="pending" />
+          <el-option label="已通过" value="pass" />
+          <el-option label="已淘汰" value="reject" />
+        </el-select>
+        <RouterLink class="secondary-btn" :to="{ name: 'admin-dashboard' }">返回工作台</RouterLink>
+      </div>
     </div>
 
     <div v-if="loading" class="state-card">加载中</div>
@@ -23,7 +30,10 @@
             <strong>{{ result.candidateName }}</strong>
             <div class="result-meta">{{ result.role }}</div>
           </div>
-          <AdminToneBadge :label="result.scoreBand.label" :tone="result.scoreBand.tone" />
+          <div class="badge-col">
+            <AdminToneBadge :label="result.decisionLabel" :tone="result.decisionTone" />
+            <AdminToneBadge :label="result.scoreBand.label" :tone="result.scoreBand.tone" />
+          </div>
         </div>
 
         <AdminScoreBar
@@ -41,7 +51,10 @@
           <span class="risk-copy">
             {{
               result.riskPreview.total
-                ? `共 ${result.riskPreview.total} 次异常，${result.riskPreview.items.slice(0, 2).map((item) => `${item.label} ${item.count} 次`).join(" · ")}`
+                ? `共 ${result.riskPreview.total} 次异常，${result.riskPreview.items
+                    .slice(0, 2)
+                    .map((item) => `${item.label} ${item.count} 次`)
+                    .join(" · ")}`
                 : "当前未记录异常行为"
             }}
           </span>
@@ -49,7 +62,7 @@
       </RouterLink>
     </div>
 
-    <div v-else class="state-card">暂时还没有已交卷结果。</div>
+    <div v-else class="state-card">当前筛选下没有结果。已淘汰候选人仍会保留在「已淘汰」筛选中供回看。</div>
   </section>
 </template>
 
@@ -59,25 +72,51 @@ import { RouterLink } from "vue-router";
 
 import AdminScoreBar from "../../components/admin/AdminScoreBar.vue";
 import AdminToneBadge from "../../components/admin/AdminToneBadge.vue";
-import { describeScoreBand, summarizeRiskSummary } from "../../components/admin/adminUi";
+import {
+  describeScoreBand,
+  summarizeRiskSummary,
+  type AdminTone
+} from "../../components/admin/adminUi";
 import { loadResultDetail, loadResults, type ResultSummary } from "../../lib/gateway";
 
 const loading = ref(true);
 const loadError = ref("");
 const results = ref<ResultSummary[]>([]);
 const riskPreviewMap = ref<Record<string, ReturnType<typeof summarizeRiskSummary>>>({});
+const decisionFilter = ref("");
+
+function decisionMeta(result: ResultSummary): { label: string; tone: AdminTone; key: string } {
+  if (result.screeningDecision === "pass") {
+    return { label: "已通过", tone: "success", key: "pass" };
+  }
+  if (result.screeningDecision === "reject") {
+    return { label: "已淘汰", tone: "danger", key: "reject" };
+  }
+  if (result.reviewStatus === "reviewed") {
+    return { label: "已复核", tone: "info", key: "pending" };
+  }
+  return { label: "待复核", tone: "warning", key: "pending" };
+}
 
 const resultCards = computed(() =>
-  results.value.map((result) => ({
-    ...result,
-    scoreBand: describeScoreBand(result.totalScore),
-    riskPreview:
-      riskPreviewMap.value[result.resultId] ??
-      summarizeRiskSummary({
-        event_count: 0,
-        event_types: {}
-      })
-  }))
+  results.value
+    .map((result) => {
+      const decision = decisionMeta(result);
+      return {
+        ...result,
+        scoreBand: describeScoreBand(result.totalScore),
+        riskPreview:
+          riskPreviewMap.value[result.resultId] ??
+          summarizeRiskSummary({
+            event_count: 0,
+            event_types: {}
+          }),
+        decisionLabel: decision.label,
+        decisionTone: decision.tone,
+        decisionKey: decision.key
+      };
+    })
+    .filter((result) => !decisionFilter.value || result.decisionKey === decisionFilter.value)
 );
 
 function formatTime(value: string) {
@@ -126,15 +165,23 @@ onMounted(async () => {
 
 .page-head,
 .result-top,
-.risk-row {
+.risk-row,
+.head-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .page-title {
-  margin: 16px 0 0;
+  margin: 8px 0 0;
+}
+
+.page-meta,
+.result-meta,
+.risk-copy {
+  color: var(--ink-soft);
 }
 
 .result-grid {
@@ -148,44 +195,21 @@ onMounted(async () => {
   padding: 20px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.84);
-  border: 1px solid rgba(20, 33, 61, 0.07);
-}
-
-.result-card {
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  text-decoration: none;
   color: inherit;
 }
 
-.result-meta,
-.state-card,
-.risk-copy {
-  color: var(--ink-soft);
+.badge-col {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
 }
 
-.risk-row {
-  align-items: flex-start;
-}
-
-.risk-copy {
-  line-height: 1.6;
-  text-align: right;
-}
-
-@media (max-width: 960px) {
-  .page-head,
-  .result-top,
-  .risk-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
+@media (max-width: 900px) {
   .result-grid {
     grid-template-columns: 1fr;
-  }
-
-  .risk-copy {
-    text-align: left;
   }
 }
 </style>

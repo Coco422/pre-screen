@@ -10,7 +10,26 @@
       <div class="detail-page__actions">
         <RouterLink class="detail-btn detail-btn--ghost" :to="{ name: 'admin-candidates' }">返回列表</RouterLink>
         <RouterLink class="detail-btn detail-btn--ghost" :to="editTarget">编辑画像</RouterLink>
-        <RouterLink class="detail-btn detail-btn--primary" :to="paperTarget">去发卷</RouterLink>
+        <button
+          v-if="isPaperGenerating"
+          class="detail-btn detail-btn--ghost"
+          type="button"
+          disabled
+        >
+          生成中 {{ profile.processing?.progress ?? 0 }}%
+        </button>
+        <button
+          v-else-if="canGeneratePaper"
+          class="detail-btn detail-btn--primary"
+          type="button"
+          :disabled="generating"
+          @click="onGeneratePaper"
+        >
+          {{ generating ? "提交中..." : "生成考卷" }}
+        </button>
+        <RouterLink v-else-if="profile.paperId" class="detail-btn detail-btn--primary" :to="paperTarget">
+          编辑考卷
+        </RouterLink>
       </div>
     </header>
 
@@ -176,13 +195,26 @@
           <h3>操作</h3>
           <div class="action-block__buttons">
             <RouterLink class="detail-btn detail-btn--ghost" :to="editTarget">编辑画像</RouterLink>
-            <RouterLink class="detail-btn detail-btn--ghost" :to="paperTarget">
-              {{ profile.paperId ? "查看考卷" : "生成考卷" }}
+            <button
+              v-if="canGeneratePaper"
+              class="detail-btn detail-btn--primary"
+              type="button"
+              :disabled="generating"
+              @click="onGeneratePaper"
+            >
+              {{ generating ? "提交中..." : "生成考卷" }}
+            </button>
+            <RouterLink v-else-if="profile.paperId" class="detail-btn detail-btn--ghost" :to="paperTarget">
+              编辑考卷
             </RouterLink>
-            <RouterLink class="detail-btn detail-btn--primary" :to="paperTarget">
-              {{ profile.invitationToken ? "查看入口" : "发卷" }}
+            <RouterLink
+              v-if="profile.resultId"
+              class="detail-btn detail-btn--primary"
+              :to="{ name: 'admin-result-detail', params: { resultId: profile.resultId } }"
+            >
+              查看结果
             </RouterLink>
-            <button class="detail-btn detail-btn--danger" type="button">淘汰</button>
+            <p v-if="actionHint" class="action-hint">{{ actionHint }}</p>
           </div>
         </section>
 
@@ -222,7 +254,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 
 import AdminScoreBar from "../../components/admin/AdminScoreBar.vue";
@@ -237,7 +269,7 @@ import {
   buildCandidateSignal,
   type AdminTone
 } from "../../components/admin/adminUi";
-import { loadCandidateDetail, type CandidateDetail } from "../../lib/gateway";
+import { loadCandidateDetail, startPaperGeneration, type CandidateDetail } from "../../lib/gateway";
 
 const VuePdfEmbed = defineAsyncComponent(() => import("vue-pdf-embed"));
 
@@ -260,10 +292,28 @@ type CandidateDraft = Pick<
 const route = useRoute();
 const profile = ref<CandidateDetail | null>(null);
 const loadError = ref("");
+const generating = ref(false);
+const actionHint = ref("");
 let latestRequestId = 0;
+let pollTimer: number | null = null;
 
 const candidateId = computed(() => (typeof route.params.candidateId === "string" ? route.params.candidateId : ""));
 const editTarget = computed(() => buildCandidateEditPath(candidateId.value));
+
+const isPaperGenerating = computed(() => {
+  if (!profile.value) return false;
+  if (profile.value.status === "拟出卷中") return true;
+  const stage = profile.value.processing?.stage;
+  const status = profile.value.processing?.status;
+  return stage === "paper_generate" && (status === "running" || status === "queued");
+});
+
+const canGeneratePaper = computed(() => {
+  if (!profile.value) return false;
+  if (profile.value.paperId || isPaperGenerating.value) return false;
+  if (profile.value.status === "解析中" || profile.value.status === "解析失败") return false;
+  return true;
+});
 
 const paperTarget = computed(() => {
   const target = buildPaperRouteTarget(candidateId.value);
@@ -277,6 +327,40 @@ const paperTarget = computed(() => {
     }
   };
 });
+
+function stopPoll() {
+  if (pollTimer != null) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+async function reloadProfile() {
+  if (!candidateId.value) return;
+  profile.value = await loadCandidateDetail(candidateId.value);
+  if (!isPaperGenerating.value) {
+    stopPoll();
+  }
+}
+
+async function onGeneratePaper() {
+  if (!candidateId.value) return;
+  generating.value = true;
+  actionHint.value = "";
+  try {
+    await startPaperGeneration(candidateId.value);
+    actionHint.value = "考卷生成已入队，进度会自动刷新。";
+    await reloadProfile();
+    stopPoll();
+    pollTimer = window.setInterval(() => {
+      void reloadProfile().catch(() => undefined);
+    }, 1500);
+  } catch (error) {
+    actionHint.value = error instanceof Error ? error.message : "提交失败";
+  } finally {
+    generating.value = false;
+  }
+}
 
 const signal = computed(() =>
   profile.value
@@ -357,9 +441,14 @@ function applyCandidateDraft(detail: CandidateDetail, targetCandidateId: string)
   };
 }
 
+onBeforeUnmount(() => {
+  stopPoll();
+});
+
 watch(
   candidateId,
   async (nextCandidateId) => {
+    stopPoll();
     if (!nextCandidateId) {
       profile.value = null;
       loadError.value = "";
@@ -369,6 +458,7 @@ watch(
     const requestId = ++latestRequestId;
     profile.value = null;
     loadError.value = "";
+    actionHint.value = "";
 
     try {
       const detail = await loadCandidateDetail(nextCandidateId);
@@ -377,6 +467,11 @@ watch(
       }
 
       profile.value = applyCandidateDraft(detail, nextCandidateId);
+      if (isPaperGenerating.value) {
+        pollTimer = window.setInterval(() => {
+          void reloadProfile().catch(() => undefined);
+        }, 1500);
+      }
     } catch {
       if (requestId !== latestRequestId) {
         return;

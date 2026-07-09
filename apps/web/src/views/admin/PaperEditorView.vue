@@ -101,11 +101,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 
 import AdminCopyField from "../../components/admin/AdminCopyField.vue";
 import AdminToneBadge from "../../components/admin/AdminToneBadge.vue";
-import { generatePaper, loadPaperDraft, publishPaper, savePaperDraft, type PaperDraft } from "../../lib/gateway";
+import { loadPaperDraft, publishPaper, savePaperDraft, type PaperDraft } from "../../lib/gateway";
 
 type PublishInfo = {
   link: string;
@@ -113,7 +113,6 @@ type PublishInfo = {
 };
 
 const route = useRoute();
-const router = useRouter();
 const paper = ref<PaperDraft | null>(null);
 const publishInfo = ref<PublishInfo>({ link: "", code: "" });
 const loadError = ref("");
@@ -248,22 +247,23 @@ watch(
     isFallbackPublish.value = Boolean(publishInfo.value.link && publishInfo.value.code);
 
     try {
-      const draft =
-        nextPaperId === "new" && nextCandidateId
-          ? await generatePaper(nextCandidateId)
-          : await loadPaperDraft(nextPaperId);
+      if (nextPaperId === "new") {
+        // Paper generation is a long-running job on the candidate/task flow, not inline here.
+        if (requestId !== latestRequestId) {
+          return;
+        }
+        loadError.value = nextCandidateId
+          ? "请先在任务详情点击「生成考卷」，生成完成后再进入编辑。"
+          : "缺少考卷 ID，请从任务或考卷列表进入。";
+        return;
+      }
+
+      const draft = await loadPaperDraft(nextPaperId);
       if (requestId !== latestRequestId) {
         return;
       }
 
       paper.value = draft;
-      if (nextPaperId === "new") {
-        await router.replace({
-          name: "admin-paper-editor",
-          params: { paperId: draft.paperId },
-          query: route.query
-        });
-      }
       if (draft.invitation) {
         publishInfo.value = {
           link: draft.invitation.startUrl,

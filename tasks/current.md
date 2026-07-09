@@ -1,35 +1,26 @@
 # Current Status Snapshot
 
-<!-- updated_at: 2026-07-09 -->
-<!-- stale_after: 24h -->
-
-> **Status**: Active implementation — production-cutover  
+> **Status**: Active implementation — UX closed-loop + production-cutover  
 > **Updated At**: 2026-07-09  
-> **Source Branch**: main  
-> **Target Branch**: main  
 > **Active Plan**: `plans/plan-20260709-production-cutover.md`
 
-## Summary
+## Latest slice
 
-- Docs aligned (prior commit).
-- **In progress**: production cutover Phase 0–1 done; Phase 2 partial (auth/tasks/ai_settings postgres path); Phase 4.1–4.3 FE product gaps closed.
-- Default runtime still `STORE_BACKEND=memory` (demo seed). Flip to `postgres` after `bash scripts/flyway-migrate.sh`.
+User-experience closed loop (not API-only):
 
-## Done this slice
+- 侧栏 **系统设置**（AI 为子页；账号/通知规划占位）
+- 顶栏铃铛/账号菜单 → 设置占位 + todos 设计
+- **生成考卷** 异步长任务（202 + 轮询），不再「发卷」进编辑器死等
+- 考卷管理列表页
+- 结果中心：已淘汰可回看 + 结论徽章/筛选
 
-- Status machine + entity map docs; `pre_screen_common.status|db|security`
-- Flyway: `app` + auth/exam/scoring/risk/judge V2 + resume V3
-- `GatewayStoreRouter` + Auth/Task/AISettings repos
-- FE: ResultDetail review/complete; ExamMonitor page; nav/router
+## Next
 
-## Exact next step
+1. 手测：解析 → 生成考卷进度 → 编辑 → 发布  
+2. production-cutover 2.3+：upload/candidate 落库  
+3. 账号改密 / 通知中心（todos）
 
-1. Start local Postgres + run `bash scripts/flyway-migrate.sh` and extend integration tests for auth/tasks.
-2. Continue Phase 2.3–2.9: upload/candidate/paper/session/result/risk → Postgres.
-3. Then Phase 3 demolish demo_store.
+## Docs
 
-## Verification
-
-- `uv run pytest tests/common tests/services/test_gateway_routes.py` — green
-- `pnpm exec vitest run src/router/router.spec.ts` (apps/web) — green
-- Flyway against live Postgres — deferred until stack is up
+- `docs/page-api/18-system-settings-and-account.md`
+- `docs/page-api/19-paper-list-and-generate-job.md`

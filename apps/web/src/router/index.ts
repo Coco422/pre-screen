@@ -51,11 +51,7 @@ export const routes: RouteRecordRaw[] = [
         meta: {
           title: "考卷管理"
         },
-        component: () => import("../views/shared/PlaceholderView.vue"),
-        props: {
-          description: "考卷管理列表将在后续阶段重构。",
-          iconLabel: "Papers"
-        }
+        component: () => import("../views/admin/PaperListView.vue")
       },
       {
         path: "tasks/new",
@@ -138,9 +134,9 @@ export const routes: RouteRecordRaw[] = [
         path: "settings",
         name: "admin-settings",
         meta: {
-          title: "AI 配置"
+          title: "系统设置"
         },
-        component: () => import("../views/admin/AiSettingsView.vue")
+        component: () => import("../views/admin/SystemSettingsView.vue")
       }
     ]
   },

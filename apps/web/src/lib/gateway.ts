@@ -231,6 +231,21 @@ export type ResultSummary = {
   submittedAt: string;
   totalScore: number;
   status: string;
+  reviewStatus?: string;
+  screeningDecision?: string | null;
+};
+
+export type PaperListItem = {
+  paperId: string;
+  candidateId: string;
+  candidateName: string;
+  taskId?: string | null;
+  title: string;
+  status: string;
+  durationMinutes: number;
+  questionCount: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
 };
 
 export type ResultDetail = {
@@ -727,7 +742,16 @@ export async function loadTaskDetail(taskId: string): Promise<{
       updatedAt: item.updated_at,
       processing: mapProcessingStatus(item.processing)
     })),
-    candidates: response.candidates.map(mapCandidateCard)
+    candidates: response.candidates.map((item) =>
+      mapCandidateCard({
+        ...item,
+        id: item.id ?? (item as { candidate_id?: string }).candidate_id ?? "",
+        task_id: item.task_id ?? taskId,
+        quality: item.quality ?? "—",
+        summary: item.summary ?? "",
+        skills: item.skills ?? []
+      })
+    )
   };
 }
 
@@ -1076,11 +1100,86 @@ function mapPaperQuestion(item: {
   };
 }
 
-export async function generatePaper(candidateId: string): Promise<PaperDraft> {
-  const response = await requestJson<{ paper_id: string }>(`/admin/candidates/${candidateId}/papers/generate`, {
+export type PaperGenerationJob = {
+  candidateId: string;
+  status: "generating" | "ready" | "failed" | string;
+  paperId?: string | null;
+  message?: string;
+  processing?: ProcessingStatus | null;
+};
+
+/** Start async paper generation (long job, poll candidate/task status). */
+export async function startPaperGeneration(candidateId: string): Promise<PaperGenerationJob> {
+  const response = await requestJson<{
+    candidate_id: string;
+    status: string;
+    paper_id?: string | null;
+    message?: string;
+    processing?: {
+      stage?: string;
+      status?: string;
+      progress?: number;
+      message?: string;
+      error_message?: string | null;
+      steps?: Record<string, { label?: string; status?: string }>;
+    } | null;
+  }>(`/admin/candidates/${candidateId}/papers/generate`, {
     method: "POST"
   });
-  return loadPaperDraft(response.paper_id);
+
+  return {
+    candidateId: response.candidate_id,
+    status: response.status,
+    paperId: response.paper_id,
+    message: response.message,
+    processing: mapProcessingStatus(response.processing)
+  };
+}
+
+/** @deprecated Prefer startPaperGeneration + poll; kept for callers that need a draft immediately when already ready. */
+export async function generatePaper(candidateId: string): Promise<PaperDraft> {
+  const job = await startPaperGeneration(candidateId);
+  if (job.paperId && job.status === "ready") {
+    return loadPaperDraft(job.paperId);
+  }
+  throw new Error(job.message || "考卷生成已入队，请稍候在任务页查看进度");
+}
+
+export async function loadPapers(filters?: {
+  status?: string;
+  taskId?: string;
+}): Promise<PaperListItem[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.taskId) params.set("task_id", filters.taskId);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await requestJson<{
+    items: Array<{
+      paper_id: string;
+      candidate_id: string;
+      candidate_name: string;
+      task_id?: string | null;
+      title: string;
+      status: string;
+      duration_minutes: number;
+      question_count: number;
+      updated_at?: string | null;
+      created_at?: string | null;
+    }>;
+  }>(`/admin/papers${query}`, undefined, { items: [] });
+
+  return response.items.map((item) => ({
+    paperId: item.paper_id,
+    candidateId: item.candidate_id,
+    candidateName: item.candidate_name,
+    taskId: item.task_id,
+    title: item.title,
+    status: item.status,
+    durationMinutes: item.duration_minutes,
+    questionCount: item.question_count,
+    updatedAt: item.updated_at,
+    createdAt: item.created_at
+  }));
 }
 
 export async function loadPaperDraft(paperId: string): Promise<PaperDraft> {
@@ -1211,6 +1310,8 @@ export async function loadResults(): Promise<ResultSummary[]> {
     submitted_at: string;
     total_score: number;
     status: string;
+    review_status?: string;
+    screening_decision?: string | null;
   }> }>("/admin/results", undefined, { items: [] });
 
   return response.items.map((item) => ({
@@ -1220,7 +1321,9 @@ export async function loadResults(): Promise<ResultSummary[]> {
     role: item.role ?? item.paper_title ?? "在线测评",
     submittedAt: item.submitted_at,
     totalScore: item.total_score,
-    status: item.status
+    status: item.status,
+    reviewStatus: item.review_status,
+    screeningDecision: item.screening_decision ?? null
   }));
 }
 

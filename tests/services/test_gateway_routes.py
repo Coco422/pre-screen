@@ -47,6 +47,24 @@ def _wait_for_upload_ready(client: TestClient, upload_id: str, timeout_seconds: 
     raise AssertionError(f"upload {upload_id} did not reach parsed state")
 
 
+def _wait_for_paper_ready(client: TestClient, candidate_id: str, timeout_seconds: float = 5.0) -> dict:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        response = client.get(f"/admin/candidates/{candidate_id}")
+        assert response.status_code == 200
+        payload = response.json()
+        paper_id = payload.get("paper_id")
+        processing = payload.get("processing") or {}
+        if paper_id and processing.get("stage") in {None, "paper_ready", "published"}:
+            return payload
+        if paper_id and payload.get("status") == "待发卷":
+            return payload
+        if processing.get("status") == "failed":
+            raise AssertionError(f"paper generation failed: {processing.get('message')}")
+        time.sleep(0.02)
+    raise AssertionError(f"candidate {candidate_id} paper was not generated in time")
+
+
 def test_gateway_admin_candidates_endpoint_returns_items():
     client = TestClient(app)
 
@@ -77,8 +95,8 @@ def test_gateway_candidates_endpoint_filters_and_returns_workbench_fields():
     assert pending_payload["items"][0]["resume_uploaded_at"]
     assert pending_payload["items"][0]["updated_at"]
     assert pending_payload["items"][0]["next_action"] == {
-        "label": "查看详情",
-        "target": "/admin/candidates/c-002",
+        "label": "生成考卷",
+        "target": "/admin/candidates/c-002/papers/generate",
     }
 
     published_response = client.get(
@@ -277,15 +295,18 @@ def test_gateway_hr_to_exam_review_flow(monkeypatch):
 
     generate_paper_response = client.post(f"/admin/candidates/{candidate_id}/papers/generate")
 
-    assert generate_paper_response.status_code == 201
-    generated_paper = generate_paper_response.json()
-    paper_id = generated_paper["paper_id"]
+    assert generate_paper_response.status_code == 202
+    assert generate_paper_response.json()["status"] == "generating"
+    candidate_ready = _wait_for_paper_ready(client, candidate_id)
+    paper_id = candidate_ready["paper_id"]
+    assert paper_id
 
     paper_detail_response = client.get(f"/admin/papers/{paper_id}")
 
     assert paper_detail_response.status_code == 200
-    assert paper_detail_response.json()["paper_id"] == paper_id
-    assert paper_detail_response.json()["mix"]["coding"] == 1
+    generated_paper = paper_detail_response.json()
+    assert generated_paper["paper_id"] == paper_id
+    assert generated_paper["mix"]["coding"] == 1
 
     paper_update_response = client.put(
         f"/admin/papers/{paper_id}",
@@ -815,9 +836,10 @@ def test_generated_paper_links_questions_to_resume_projects(monkeypatch):
     _wait_for_upload_ready(client, upload_id)
 
     generate_paper_response = client.post(f"/admin/candidates/{candidate_id}/papers/generate")
-    assert generate_paper_response.status_code == 201
-
-    paper_id = generate_paper_response.json()["paper_id"]
+    assert generate_paper_response.status_code == 202
+    assert generate_paper_response.json()["status"] == "generating"
+    candidate_ready = _wait_for_paper_ready(client, candidate_id)
+    paper_id = candidate_ready["paper_id"]
     paper_detail_response = client.get(f"/admin/papers/{paper_id}")
     payload = paper_detail_response.json()
 

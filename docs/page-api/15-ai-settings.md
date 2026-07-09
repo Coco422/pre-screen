@@ -1,9 +1,10 @@
 # 15. AI 配置管理
 
-- 文档路由：`/admin/settings/ai`
-- **当前前端路由**：`/admin/settings`（`AiSettingsView`）
+- 文档路由：`/admin/settings/ai`（历史）
+- **当前前端路由**：`/admin/settings?tab=ai`（系统设置 → AI 模型子面板，`AiSettingsView` 嵌在 `SystemSettingsView`）
+- 侧栏名称：**系统设置**（不再单独叫 AI 配置）
 - 页面目标：让管理员在前端直接配置 AI 模型连接参数，无需改环境变量后整栈重启。
-- 对齐更新：2026-07-09
+- 对齐更新：2026-07-09（系统设置壳）
 
 ## 功能设计
 

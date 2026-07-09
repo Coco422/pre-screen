@@ -202,12 +202,17 @@ async def update_candidate(candidate_id: str, request: UpdateCandidateRequest) -
         raise _translate_store_error(exc) from exc
 
 
-@router.post("/candidates/{candidate_id}/papers/generate", status_code=status.HTTP_201_CREATED)
+@router.post("/candidates/{candidate_id}/papers/generate", status_code=status.HTTP_202_ACCEPTED)
 async def generate_paper(candidate_id: str) -> dict:
     try:
         return gateway_store.generate_paper(candidate_id)
     except Exception as exc:  # pragma: no cover
         raise _translate_store_error(exc) from exc
+
+
+@router.get("/papers")
+async def list_papers(status: str | None = None, task_id: str | None = None) -> dict:
+    return gateway_store.list_papers(status=status, task_id=task_id)
 
 
 @router.get("/papers/{paper_id}")

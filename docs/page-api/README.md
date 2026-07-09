@@ -30,6 +30,8 @@
 - [15. AI 配置管理](./15-ai-settings.md)
 - [16. 考试实时监控与防作弊](./16-exam-monitor-anti-cheat.md)
 - [17. 前端排版重设计需求](./17-frontend-layout-redesign.md)
+- [18. 系统设置 / 账号 / 通知](./18-system-settings-and-account.md)
+- [19. 考卷列表 + 异步生成考卷](./19-paper-list-and-generate-job.md)
 - [接口对齐审计](./AUDIT.md)
 
 ## 路由对照（spec / 实现）

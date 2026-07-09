@@ -190,7 +190,30 @@
 
           <div class="candidate-actions">
             <RouterLink class="outline-btn inline-btn" :to="buildCandidateDetailPath(candidate.id)">详情</RouterLink>
-            <RouterLink class="primary-action inline-btn" :to="paperTarget(candidate)">发卷</RouterLink>
+            <button
+              v-if="isPaperGenerating(candidate)"
+              class="outline-btn inline-btn"
+              type="button"
+              disabled
+            >
+              生成中 {{ candidate.processing?.progress ?? 0 }}%
+            </button>
+            <button
+              v-else-if="canStartPaperGeneration(candidate)"
+              class="primary-action inline-btn"
+              type="button"
+              :disabled="generatingIds.has(candidate.id)"
+              @click="startGeneratePaper(candidate)"
+            >
+              {{ generatingIds.has(candidate.id) ? "提交中..." : "生成考卷" }}
+            </button>
+            <RouterLink
+              v-else-if="candidate.paperId"
+              class="primary-action inline-btn"
+              :to="paperEditorTarget(candidate)"
+            >
+              编辑考卷
+            </RouterLink>
           </div>
         </article>
       </div>
@@ -229,7 +252,12 @@ import AdminToneBadge from "../../components/admin/AdminToneBadge.vue";
 import { buildCandidateDetailPath, buildPaperEditorPath } from "../../components/admin/adminRouting";
 import { describeUploadStage, summarizeTaskFlow, type AdminTone } from "../../components/admin/adminUi";
 import { buildTaskMonitorState, readTaskMonitor, writeTaskMonitor, type TaskMonitorState } from "../../components/admin/taskMonitor";
-import { loadTaskDetail, uploadTaskResumes, type CandidateCard } from "../../lib/gateway";
+import {
+  loadTaskDetail,
+  startPaperGeneration,
+  uploadTaskResumes,
+  type CandidateCard
+} from "../../lib/gateway";
 
 const POLLING_INTERVAL_MS = 1_200;
 
@@ -238,6 +266,7 @@ const task = ref<Awaited<ReturnType<typeof loadTaskDetail>> | null>(null);
 const loadError = ref("");
 const uploadMessage = ref("");
 const refreshing = ref(false);
+const generatingIds = ref(new Set<string>());
 const monitorState = ref<TaskMonitorState | null>(null);
 const clockNow = ref(Date.now());
 const taskId = computed(() => (typeof route.params.taskId === "string" ? route.params.taskId : ""));
@@ -248,10 +277,18 @@ const taskFlowSteps = [
   { label: "接收文件", copy: "创建候选人占位与解析任务。" },
   { label: "解析内容", copy: "抽取 PDF 文本层并触发补读。" },
   { label: "整理画像", copy: "生成技能、联系方式与摘要。" },
-  { label: "进入待发卷", copy: "候选人就绪，继续发卷。" }
+  { label: "生成考卷", copy: "异步出题，完成后可编辑并发布。" }
 ];
 
-const parsingCount = computed(() => task.value?.uploads.filter((item) => item.status !== "parsed" && item.status !== "failed").length ?? 0);
+const paperGeneratingCount = computed(
+  () =>
+    task.value?.candidates.filter((item) => isPaperGenerating(item)).length ?? 0
+);
+const parsingCount = computed(() => {
+  const uploadBusy =
+    task.value?.uploads.filter((item) => item.status !== "parsed" && item.status !== "failed").length ?? 0;
+  return uploadBusy + paperGeneratingCount.value;
+});
 const flowSummary = computed(() => summarizeTaskFlow(task.value?.uploads ?? []));
 const monitorSummary = computed(() => monitorState.value ?? {
   label: flowSummary.value.label,
@@ -311,16 +348,65 @@ function toneForQuality(quality: string): AdminTone {
 }
 
 function toneForStatus(status: string): AdminTone {
-  if (status === "待发卷" || status === "已交卷") {
+  if (status === "待发卷" || status === "已交卷" || status === "已完成筛选") {
     return "success";
   }
-  if (status === "解析失败") {
+  if (status === "解析失败" || status === "已淘汰") {
     return "danger";
   }
-  if (status === "解析中") {
+  if (status === "解析中" || status === "拟出卷中") {
     return "info";
   }
   return "warning";
+}
+
+function isPaperGenerating(candidate: CandidateCard) {
+  if (candidate.status === "拟出卷中") {
+    return true;
+  }
+  const stage = candidate.processing?.stage;
+  const status = candidate.processing?.status;
+  return stage === "paper_generate" && (status === "running" || status === "queued");
+}
+
+function canStartPaperGeneration(candidate: CandidateCard) {
+  if (candidate.paperId || isPaperGenerating(candidate)) {
+    return false;
+  }
+  if (candidate.status === "解析中" || candidate.status === "解析失败") {
+    return false;
+  }
+  return true;
+}
+
+function paperEditorTarget(candidate: CandidateCard) {
+  return {
+    path: buildPaperEditorPath(candidate.paperId),
+    query: {
+      candidateId: candidate.id,
+      candidateName: candidate.name
+    }
+  };
+}
+
+async function startGeneratePaper(candidate: CandidateCard) {
+  const next = new Set(generatingIds.value);
+  next.add(candidate.id);
+  generatingIds.value = next;
+  uploadMessage.value = `已为 ${candidate.name} 提交考卷生成任务，可继续处理其他候选人。`;
+  try {
+    await startPaperGeneration(candidate.id);
+    await refreshTask();
+    if (pollingTimer == null) {
+      startPolling();
+    }
+  } catch (error) {
+    uploadMessage.value = error instanceof Error ? error.message : "提交考卷生成失败";
+  } finally {
+    const cleared = new Set(generatingIds.value);
+    cleared.delete(candidate.id);
+    generatingIds.value = cleared;
+  }
 }
 
 function progressStatus(tone: AdminTone) {
@@ -368,16 +454,6 @@ function stopPolling() {
     window.clearInterval(pollingTimer);
     pollingTimer = null;
   }
-}
-
-function paperTarget(candidate: CandidateCard) {
-  return {
-    path: buildPaperEditorPath(candidate.paperId),
-    query: {
-      candidateId: candidate.id,
-      candidateName: candidate.name
-    }
-  };
 }
 
 function syncMonitorState(nextTask: NonNullable<typeof task.value>) {

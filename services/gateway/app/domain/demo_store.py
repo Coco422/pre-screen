@@ -1119,76 +1119,218 @@ class GatewayDemoStore:
         return self._serialize_candidate_detail(candidate)
 
     def generate_paper(self, candidate_id: str) -> dict[str, Any]:
+        """Enqueue paper generation as a long-running job (same UX pattern as PDF parse)."""
         candidate = self.candidates.get(candidate_id)
         if candidate is None:
             raise LookupError("Candidate not found.")
-        task = self.tasks[candidate["task_id"]]
-        question_brief = build_question_brief(
-            candidate_profile={
-                "skills": candidate["skills"],
+
+        processing = candidate.get("processing") or {}
+        if (
+            processing.get("stage") == "paper_generate"
+            and processing.get("status") in {"queued", "running"}
+        ):
+            return {
+                "candidate_id": candidate_id,
+                "status": "generating",
+                "paper_id": candidate["paper_ids"][-1] if candidate.get("paper_ids") else None,
+                "processing": deepcopy(processing),
+                "message": "考卷生成进行中",
+            }
+
+        if candidate.get("paper_ids"):
+            paper = self.papers[candidate["paper_ids"][-1]]
+            return {
+                "candidate_id": candidate_id,
+                "status": "ready",
+                "paper_id": paper["paper_id"],
+                "processing": deepcopy(candidate.get("processing")),
+                "message": "已有考卷草稿",
+                "paper": self._serialize_paper(paper),
+            }
+
+        generation = self._generation
+        with self._lock:
+            candidate["status"] = "拟出卷中"
+            candidate["processing"] = _build_processing(
+                stage="paper_generate",
+                status="running",
+                progress=12,
+                message="考卷生成已入队，正在结合简历与 JD 出题…",
+                step_statuses={
+                    "upload": "succeeded",
+                    "pdf_parse": "succeeded",
+                    "project_extract": "succeeded",
+                    "paper_generate": "running",
+                },
+            )
+            processing_snapshot = deepcopy(candidate["processing"])
+
+        Thread(
+            target=self._generate_paper_async,
+            args=(generation, candidate_id),
+            daemon=True,
+        ).start()
+        return {
+            "candidate_id": candidate_id,
+            "status": "generating",
+            "paper_id": None,
+            "processing": processing_snapshot,
+            "message": "考卷生成已入队",
+        }
+
+    def _generate_paper_async(self, generation: int, candidate_id: str) -> None:
+        with self._lock:
+            if generation != self._generation or candidate_id not in self.candidates:
+                return
+            candidate = self.candidates[candidate_id]
+            task = self.tasks[candidate["task_id"]]
+            candidate_snapshot = {
+                "skills": deepcopy(candidate["skills"]),
                 "projects": deepcopy(candidate.get("projects", [])),
                 "focus_topics": deepcopy(candidate.get("analysis", {}).get("focus_topics", [])),
                 "recommended_languages": deepcopy(
                     candidate.get("analysis", {}).get("recommended_languages", [])
                 ),
                 "project_summary": candidate["project_summary"],
-            },
-            job_context={
+            }
+            job_snapshot = {
                 "title": task["title"],
                 "department": task["department"],
                 "jd_text": task["jd_text"],
                 "tags": deepcopy(task["tags"]),
-            },
-        )
-        draft = generate_paper_draft(
-            job_template={
-                "name": task["title"],
-                **task["template_config"],
-                "tags": task["tags"],
-            },
-            jd_text=task["jd_text"],
-            candidate_profile={
-                "skills": candidate["skills"],
-                "projects": deepcopy(candidate.get("projects", [])),
-                "focus_topics": deepcopy(candidate.get("analysis", {}).get("focus_topics", [])),
-                "recommended_languages": deepcopy(
-                    candidate.get("analysis", {}).get("recommended_languages", [])
-                ),
-                "question_brief": question_brief,
-            },
-        )
-        paper_id = self._next_id("paper")
-        paper = {
-            "paper_id": paper_id,
-            "candidate_id": candidate_id,
-            "task_id": candidate["task_id"],
-            "title": f"{task['title']}在线测评草稿",
-            "mix": deepcopy(draft["question_mix"]),
-            "questions": [self._materialize_question(item) for item in draft["questions"]],
-            "status": "draft",
-            "duration_minutes": task["duration_minutes"],
-            "introduction": draft.get("introduction"),
-            "generation_summary": deepcopy(draft.get("generation_summary", {})),
-            "created_at": _utcnow(),
-            "updated_at": _utcnow(),
-        }
-        with self._lock:
-            self.papers[paper_id] = paper
-            candidate["paper_ids"].append(paper_id)
-            candidate["status"] = "待发卷"
+                "template_config": deepcopy(task["template_config"]),
+                "duration_minutes": task["duration_minutes"],
+            }
             candidate["processing"] = _build_processing(
-                stage="paper_ready",
-                status="succeeded",
-                progress=100,
-                message="候选人画像已完成，系统已生成项目相关考卷草稿。",
+                stage="paper_generate",
+                status="running",
+                progress=40,
+                message="正在调用模型生成针对性题目…",
                 step_statuses={
                     "upload": "succeeded",
                     "pdf_parse": "succeeded",
                     "project_extract": "succeeded",
-                    "paper_generate": "succeeded",
+                    "paper_generate": "running",
                 },
             )
-        return self._serialize_paper(paper)
+
+        try:
+            question_brief = build_question_brief(
+                candidate_profile=candidate_snapshot,
+                job_context={
+                    "title": job_snapshot["title"],
+                    "department": job_snapshot["department"],
+                    "jd_text": job_snapshot["jd_text"],
+                    "tags": job_snapshot["tags"],
+                },
+            )
+            with self._lock:
+                if generation != self._generation or candidate_id not in self.candidates:
+                    return
+                self.candidates[candidate_id]["processing"] = _build_processing(
+                    stage="paper_generate",
+                    status="running",
+                    progress=70,
+                    message="题目结构已就绪，正在组装考卷草稿…",
+                    step_statuses={
+                        "upload": "succeeded",
+                        "pdf_parse": "succeeded",
+                        "project_extract": "succeeded",
+                        "paper_generate": "running",
+                    },
+                )
+
+            draft = generate_paper_draft(
+                job_template={
+                    "name": job_snapshot["title"],
+                    **job_snapshot["template_config"],
+                    "tags": job_snapshot["tags"],
+                },
+                jd_text=job_snapshot["jd_text"],
+                candidate_profile={
+                    **candidate_snapshot,
+                    "question_brief": question_brief,
+                },
+            )
+            with self._lock:
+                if generation != self._generation or candidate_id not in self.candidates:
+                    return
+                candidate = self.candidates[candidate_id]
+                paper_id = self._next_id("paper")
+                paper = {
+                    "paper_id": paper_id,
+                    "candidate_id": candidate_id,
+                    "task_id": candidate["task_id"],
+                    "title": f"{job_snapshot['title']}在线测评草稿",
+                    "mix": deepcopy(draft["question_mix"]),
+                    "questions": [self._materialize_question(item) for item in draft["questions"]],
+                    "status": "draft",
+                    "duration_minutes": job_snapshot["duration_minutes"],
+                    "introduction": draft.get("introduction"),
+                    "generation_summary": deepcopy(draft.get("generation_summary", {})),
+                    "created_at": _utcnow(),
+                    "updated_at": _utcnow(),
+                }
+                self.papers[paper_id] = paper
+                candidate["paper_ids"].append(paper_id)
+                candidate["status"] = "待发卷"
+                candidate["summary"] = "考卷草稿已生成，可进入编辑与发布。"
+                candidate["processing"] = _build_processing(
+                    stage="paper_ready",
+                    status="succeeded",
+                    progress=100,
+                    message="考卷草稿已生成，可编辑后发布考试链接。",
+                    step_statuses={
+                        "upload": "succeeded",
+                        "pdf_parse": "succeeded",
+                        "project_extract": "succeeded",
+                        "paper_generate": "succeeded",
+                    },
+                )
+        except Exception as exc:
+            with self._lock:
+                if generation != self._generation or candidate_id not in self.candidates:
+                    return
+                candidate = self.candidates[candidate_id]
+                candidate["status"] = "待发卷"
+                candidate["processing"] = _build_processing(
+                    stage="paper_generate",
+                    status="failed",
+                    progress=100,
+                    message=f"考卷生成失败：{exc}",
+                    error_message=str(exc),
+                    step_statuses={
+                        "upload": "succeeded",
+                        "pdf_parse": "succeeded",
+                        "project_extract": "succeeded",
+                        "paper_generate": "failed",
+                    },
+                )
+
+    def list_papers(self, *, status: str | None = None, task_id: str | None = None) -> dict[str, Any]:
+        items = []
+        for paper in self.papers.values():
+            if status and paper["status"] != status:
+                continue
+            if task_id and paper.get("task_id") != task_id:
+                continue
+            candidate = self.candidates.get(paper["candidate_id"], {})
+            items.append(
+                {
+                    "paper_id": paper["paper_id"],
+                    "candidate_id": paper["candidate_id"],
+                    "candidate_name": candidate.get("name") or paper["candidate_id"],
+                    "task_id": paper.get("task_id"),
+                    "title": paper["title"],
+                    "status": paper["status"],
+                    "duration_minutes": paper["duration_minutes"],
+                    "question_count": len(paper.get("questions") or []),
+                    "updated_at": _isoformat(paper.get("updated_at") or paper.get("created_at")),
+                    "created_at": _isoformat(paper.get("created_at")),
+                }
+            )
+        items.sort(key=lambda item: item["updated_at"] or "", reverse=True)
+        return {"items": items, "total": len(items)}
 
     def get_paper(self, paper_id: str) -> dict[str, Any]:
         paper = self.papers.get(paper_id)
@@ -1538,6 +1680,8 @@ class GatewayDemoStore:
                     "paper_title": paper["title"],
                     "task_id": result["task_id"],
                     "status": result["status"],
+                    "review_status": result.get("review_status", "pending"),
+                    "screening_decision": result.get("screening_status"),
                     "total_score": result["summary"]["total_score"],
                     "submitted_at": _isoformat(result["submitted_at"]),
                 }
@@ -1850,22 +1994,40 @@ class GatewayDemoStore:
     def _build_candidate_next_action(self, candidate: dict[str, Any]) -> dict[str, str]:
         candidate_id = candidate["candidate_id"]
         result_id = self._find_candidate_result_id(candidate_id)
-        if candidate["status"] == "已交卷" and result_id:
+        if candidate["status"] in {"已交卷", "评分复核中"} and result_id:
             return {"label": "结果复核", "target": f"/admin/results/{result_id}"}
-        if candidate["status"] == "待发卷" and candidate.get("paper_ids"):
+        if candidate["status"] in {"已完成筛选", "已淘汰", "已归档"} and result_id:
+            return {"label": "查看结果", "target": f"/admin/results/{result_id}"}
+        if candidate.get("paper_ids") and candidate["status"] in {"待发卷", "待开考", "已发卷"}:
             paper_id = candidate["paper_ids"][-1]
-            return {"label": "发卷", "target": f"/admin/papers/{paper_id}?candidateId={candidate_id}"}
-        if candidate["status"] in {"已完成筛选", "已归档"}:
+            return {"label": "编辑考卷", "target": f"/admin/papers/{paper_id}?candidateId={candidate_id}"}
+        if candidate["status"] == "拟出卷中":
+            return {"label": "生成中", "target": f"/admin/candidates/{candidate_id}"}
+        if candidate["status"] in {"待审核", "待发卷", "信息整理中"} and not candidate.get("paper_ids"):
+            return {
+                "label": "生成考卷",
+                "target": f"/admin/candidates/{candidate_id}/papers/generate",
+            }
+        if candidate["status"] in {"已完成筛选", "已归档", "已淘汰"}:
             return {"label": "查看档案", "target": f"/admin/candidates/{candidate_id}"}
         return {"label": "查看详情", "target": f"/admin/candidates/{candidate_id}"}
 
     def _serialize_candidate_detail(self, candidate: dict[str, Any]) -> dict[str, Any]:
-        if candidate["paper_ids"]:
-            next_actions = [{"label": "生成考卷草稿", "target": f"/admin/papers/{candidate['paper_ids'][-1]}"}]
+        if candidate.get("paper_ids"):
+            next_actions = [
+                {
+                    "label": "编辑考卷",
+                    "target": f"/admin/papers/{candidate['paper_ids'][-1]}?candidateId={candidate['candidate_id']}",
+                }
+            ]
+        elif (candidate.get("processing") or {}).get("stage") == "paper_generate" and (
+            candidate.get("processing") or {}
+        ).get("status") in {"queued", "running"}:
+            next_actions = [{"label": "考卷生成中", "target": f"/admin/candidates/{candidate['candidate_id']}"}]
         else:
             next_actions = [
                 {
-                    "label": "生成考卷草稿",
+                    "label": "生成考卷",
                     "target": f"/admin/candidates/{candidate['candidate_id']}/papers/generate",
                 }
             ]

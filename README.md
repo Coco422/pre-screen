@@ -8,8 +8,8 @@
 |------|------|
 | 产品主链路 | 可用（演示 / 内网联调） |
 | 对外 API | Gateway `/api/admin/*` + `/api/public/*` 契约较完整 |
-| 实现形态 | 默认 `STORE_BACKEND=memory`（demo_store seed）；可切 `postgres` 仓储路径 |
-| 生产化 | Active plan：[`plans/plan-20260709-production-cutover.md`](plans/plan-20260709-production-cutover.md)（Phase 0–1 + 部分 2/4 已落地） |
+| 实现形态 | Compose 默认 `STORE_BACKEND=postgres`：任务/上传/候选人/AI 配置落库+MinIO；其余考试链路仍可走 demo |
+| 生产化 | Active plan：[`plans/plan-20260709-production-cutover.md`](plans/plan-20260709-production-cutover.md) |
 
 权威文档：
 
@@ -23,10 +23,11 @@
 1. Copy `.env.example` to `.env` and fill credentials（AI key、Judge0 等）。
 2. Python：`uv sync --group dev`
 3. Web：`cd apps/web && pnpm install`（或沿用仓库锁文件工具）
-4. 起依赖与网关：`bash scripts/dev-up.sh`
-5. 迁移：`bash scripts/flyway-migrate.sh`（生产路径必需）
-6. 可选：`.env` 设 `STORE_BACKEND=postgres` 启用 Auth/Tasks/AI settings 持久化路径
-7. 测试：`uv run pytest`；前端在 `apps/web` 内按 package scripts
+4. 迁移：`bash scripts/flyway-migrate.sh`（Postgres 表结构；dev-up 前先跑）
+5. 起依赖与网关：`bash scripts/dev-up.sh`（默认 `STORE_BACKEND=postgres`）
+6. 上传的 PDF 进 MinIO，候选人/任务在 Postgres；**重启 gateway 后仍在**
+7. 若只要演示种子数据：`STORE_BACKEND=memory docker compose up -d gateway`
+8. 测试：`uv run pytest`；前端在 `apps/web` 内按 package scripts
 
 默认入口：
 

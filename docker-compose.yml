@@ -161,7 +161,9 @@ services:
       AI_BASE_URL: http://172.16.99.204:3398
       AI_MODEL: qwen3.6-27b
       JUDGE0_BASE_URL: ${JUDGE0_BASE_URL:-http://192.168.100.189:2360}
-      STORE_BACKEND: ${STORE_BACKEND:-memory}
+      # postgres: durable tasks/uploads/candidates (survives gateway restart)
+      # memory: in-process demo_store seed (lost on restart)
+      STORE_BACKEND: ${STORE_BACKEND:-postgres}
     depends_on:
       postgres:
         condition: service_started

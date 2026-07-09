@@ -134,9 +134,9 @@ Web POST /api/admin/tasks/:id/uploads
 开关：`STORE_BACKEND=memory|postgres`（默认 memory 保留 demo seed）。
 
 - [x] 2.1 **Auth**：login / me → DB；bootstrap admin（env）；`GatewayStoreRouter` 路由
-- [x] 2.2 **Tasks**：create/list/get task → Postgres repo（uploads 元数据表已建；上传写路径仍走 demo 编排，待 2.3）
-- [ ] 2.3 **Resume parse job**：status 机落库；worker 调现有 `parse_resume_file` + enrich；写 profile_json
-- [ ] 2.4 **Candidates**：list/detail/update 全读 DB；PDF 从 MinIO 流式返回
+- [x] 2.2 **Tasks**：create/list/get task → Postgres repo
+- [x] 2.3 **Resume parse job**：upload 元数据 + 异步 parse 写 `upload_jobs` / candidate profile（线程内，非 Celery）
+- [x] 2.4 **Candidates**：list/detail/update 读 DB；PDF 存 MinIO 并流式返回
 - [ ] 2.5 **Papers**：generate/update/get/publish + invitation token/code_hash 落库
 - [ ] 2.6 **Exam session**：start、heartbeat、save_answer、submit 落库
 - [ ] 2.7 **Coding**：run/submit 仍调 Judge0；submission 结果落库

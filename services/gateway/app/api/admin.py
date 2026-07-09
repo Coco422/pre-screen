@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Header, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from services.gateway.app.domain.store_router import gateway_store
@@ -184,14 +184,27 @@ async def get_candidate(candidate_id: str) -> dict:
 
 
 @router.get("/candidates/{candidate_id}/resume.pdf")
-async def get_candidate_resume_pdf(candidate_id: str) -> FileResponse:
+async def get_candidate_resume_pdf(candidate_id: str) -> Response:
     try:
-        pdf_path = gateway_store.get_candidate_pdf_path(candidate_id)
+        payload = gateway_store.get_candidate_pdf_payload(candidate_id)
     except Exception as exc:
         raise _translate_store_error(exc) from exc
-    if not pdf_path:
-        raise HTTPException(status_code=404, detail="Resume PDF not found.")
-    return FileResponse(pdf_path, media_type="application/pdf")
+    if not payload:
+        # Fallback for memory store path helpers.
+        try:
+            pdf_path = gateway_store.get_candidate_pdf_path(candidate_id)
+        except Exception as exc:
+            raise _translate_store_error(exc) from exc
+        if not pdf_path:
+            raise HTTPException(status_code=404, detail="Resume PDF not found.")
+        return FileResponse(pdf_path, media_type="application/pdf")
+    return Response(
+        content=payload["content"],
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{payload.get("filename") or "resume.pdf"}"'
+        },
+    )
 
 
 @router.put("/candidates/{candidate_id}")

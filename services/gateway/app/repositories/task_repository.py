@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -8,26 +7,11 @@ from sqlalchemy import text
 
 from pre_screen_common.db import db_connection
 from pre_screen_common.settings import AppSettings
-
-
-def _isoformat(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.isoformat().replace("+00:00", "Z")
-
-
-def _as_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False)
-
-
-def _from_json(value: Any, default: Any) -> Any:
-    if value is None:
-        return default
-    if isinstance(value, (dict, list)):
-        return value
-    return json.loads(value)
+from services.gateway.app.repositories.candidate_repository import CandidateRepository
+from services.gateway.app.repositories.ids import next_text_id
+from services.gateway.app.repositories.json_util import as_json as _as_json
+from services.gateway.app.repositories.json_util import from_json as _from_json
+from services.gateway.app.repositories.json_util import isoformat as _isoformat
 
 
 class TaskRepository:
@@ -35,22 +19,7 @@ class TaskRepository:
         self._settings = settings
 
     def _next_id(self, kind: str, prefix: str) -> str:
-        with db_connection(settings=self._settings) as conn:
-            conn.execute(
-                text(
-                    """
-                    insert into app.id_counters (kind, value)
-                    values (:kind, 1)
-                    on conflict (kind) do update set value = app.id_counters.value + 1
-                    """
-                ),
-                {"kind": kind},
-            )
-            value = conn.execute(
-                text("select value from app.id_counters where kind = :kind"),
-                {"kind": kind},
-            ).scalar_one()
-            return f"{prefix}-{int(value):03d}"
+        return next_text_id(kind, prefix, settings=self._settings)
 
     def list_tasks(self, *, status: str | None = None, keyword: str | None = None) -> dict[str, Any]:
         clauses = ["1=1"]
@@ -147,17 +116,9 @@ class TaskRepository:
                 ),
                 {"task_id": task_id},
             ).mappings().all()
-            candidates = conn.execute(
-                text(
-                    """
-                    select external_id, name, role, screening_status, city
-                    from resume.candidates
-                    where task_id = :task_id
-                    order by updated_at desc
-                    """
-                ),
-                {"task_id": task_id},
-            ).mappings().all()
+        candidate_items = CandidateRepository(settings=self._settings).list_candidates(task_id=task_id)[
+            "items"
+        ]
 
         return {
             "task_id": row["id"],
@@ -185,14 +146,5 @@ class TaskRepository:
                 }
                 for u in uploads
             ],
-            "candidates": [
-                {
-                    "candidate_id": c["external_id"],
-                    "name": c["name"],
-                    "role": c["role"],
-                    "status": c["screening_status"],
-                    "city": c["city"],
-                }
-                for c in candidates
-            ],
+            "candidates": candidate_items,
         }

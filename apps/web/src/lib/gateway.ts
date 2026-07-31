@@ -406,10 +406,6 @@ export type CodingSubmitResult = {
   };
 };
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function readAdminAuthHeaders(): HeadersInit {
   if (typeof window === "undefined") {
     return {};
@@ -429,9 +425,22 @@ function readAdminAuthHeaders(): HeadersInit {
   return {};
 }
 
-async function requestJson<T>(path: string, init?: RequestInit, fallback?: T): Promise<T> {
+export class ApiError extends Error {
+  readonly status: number | null;
+  readonly detail: string;
+
+  constructor(message: string, status: number | null, detail = "") {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
+    response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
         ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -439,23 +448,31 @@ async function requestJson<T>(path: string, init?: RequestInit, fallback?: T): P
         ...(init?.headers ?? {})
       }
     });
-    if (!response.ok) {
-      throw new Error(`Request failed with ${response.status}`);
-    }
-    return (await response.json()) as T;
   } catch (error) {
-    if (fallback !== undefined) {
-      return clone(fallback);
-    }
-    throw error;
+    throw new ApiError(
+      "无法连接服务器，请检查网络后重试。",
+      null,
+      error instanceof Error ? error.message : "network error"
+    );
   }
-}
 
-const fallbackSession: AdminSession = {
-  sessionToken: "demo-admin-token",
-  userName: "Ray HR",
-  role: "HR"
-};
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const body = (await response.json()) as { detail?: unknown; message?: unknown };
+      if (typeof body.detail === "string") {
+        detail = body.detail;
+      } else if (typeof body.message === "string") {
+        detail = body.message;
+      }
+    } catch {
+      // 非 JSON 错误响应体，保留空 detail
+    }
+    throw new ApiError(detail || `请求失败（HTTP ${response.status}）`, response.status, detail);
+  }
+
+  return (await response.json()) as T;
+}
 
 export async function loginAdmin(username: string, password: string): Promise<AdminSession> {
   const response = await requestJson<{
@@ -468,41 +485,26 @@ export async function loginAdmin(username: string, password: string): Promise<Ad
       display_name?: string;
       role?: string;
     };
-  }>(
-    "/admin/session/login",
-    {
-      method: "POST",
-      body: JSON.stringify({ username, password })
-    },
-    {
-      session_token: fallbackSession.sessionToken,
-      user_name: fallbackSession.userName,
-      role: fallbackSession.role
-    }
-  );
+  }>("/admin/session/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+
+  const sessionToken = response.session_token ?? response.token;
+  const userName = response.user_name ?? response.user?.display_name ?? response.user?.username;
+
+  if (!sessionToken || !userName) {
+    throw new ApiError("登录响应缺少必要字段，请重新登录或联系管理员。", 200);
+  }
 
   return {
-    sessionToken: response.session_token ?? response.token ?? fallbackSession.sessionToken,
-    userName: response.user_name ?? response.user?.display_name ?? response.user?.username ?? fallbackSession.userName,
-    role: response.role ?? response.user?.role ?? fallbackSession.role
+    sessionToken,
+    userName,
+    role: response.role ?? response.user?.role ?? "HR"
   };
 }
 
 export async function fetchAdminSession(): Promise<AdminSession> {
-  let headers: HeadersInit | undefined;
-  if (typeof window !== "undefined") {
-    const raw = window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as AdminSession;
-        if (parsed.sessionToken) {
-          headers = { Authorization: `Bearer ${parsed.sessionToken}` };
-        }
-      } catch {
-        headers = undefined;
-      }
-    }
-  }
   const response = await requestJson<{
     token?: string;
     session_token?: string;
@@ -510,16 +512,19 @@ export async function fetchAdminSession(): Promise<AdminSession> {
     user_name?: string;
     display_name?: string;
     role?: string;
-  }>("/admin/session/me", { headers }, {
-    session_token: fallbackSession.sessionToken,
-    user_name: fallbackSession.userName,
-    role: fallbackSession.role
-  });
+  }>("/admin/session/me");
+
+  const sessionToken = response.session_token ?? response.token;
+  const userName = response.user_name ?? response.display_name ?? response.username;
+
+  if (!sessionToken || !userName) {
+    throw new ApiError("会话校验响应缺少必要字段，请重新登录。", 200);
+  }
 
   return {
-    sessionToken: response.session_token ?? response.token ?? fallbackSession.sessionToken,
-    userName: response.user_name ?? response.display_name ?? response.username ?? fallbackSession.userName,
-    role: response.role ?? fallbackSession.role
+    sessionToken,
+    userName,
+    role: response.role ?? "HR"
   };
 }
 
@@ -608,7 +613,7 @@ export async function loadTasks(): Promise<ScreeningTaskSummary[]> {
     candidate_count: number;
     upload_count?: number;
     created_at: string;
-  }> }>("/admin/tasks", undefined, { items: [] });
+  }> }>("/admin/tasks");
 
   return response.items.map((item) => ({
     id: item.id ?? item.task_id ?? "",
@@ -929,7 +934,7 @@ export async function loadCandidates(filters?: CandidateListFilters | string): P
       error_message?: string | null;
       steps?: Record<string, { label?: string; status?: string }>;
     } | null;
-  }> }>(`/admin/candidates${query}`, undefined, { items: [] });
+  }> }>(`/admin/candidates${query}`);
 
   return response.items.map(mapCandidateCard);
 }
@@ -1166,7 +1171,7 @@ export async function loadPapers(filters?: {
       updated_at?: string | null;
       created_at?: string | null;
     }>;
-  }>(`/admin/papers${query}`, undefined, { items: [] });
+  }>(`/admin/papers${query}`);
 
   return response.items.map((item) => ({
     paperId: item.paper_id,
@@ -1312,7 +1317,7 @@ export async function loadResults(): Promise<ResultSummary[]> {
     status: string;
     review_status?: string;
     screening_decision?: string | null;
-  }> }>("/admin/results", undefined, { items: [] });
+  }> }>("/admin/results");
 
   return response.items.map((item) => ({
     resultId: item.result_id,
@@ -1465,7 +1470,7 @@ export async function loadMonitorSessions(): Promise<MonitorSession[]> {
       last_heartbeat_at?: string | null;
       risk_event_count: number;
     }>;
-  }>("/admin/monitor/sessions", undefined, { items: [] });
+  }>("/admin/monitor/sessions");
 
   return response.items.map((item) => ({
     sessionId: item.session_id,

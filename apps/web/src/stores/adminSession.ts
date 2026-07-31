@@ -56,12 +56,14 @@ export const useAdminSessionStore = defineStore("admin-session", {
 
       const persisted = readPersistedSession();
       if (persisted) {
-        this.session = persisted;
         try {
           this.session = await fetchAdminSession();
           persistSession(this.session);
         } catch {
-          persistSession(this.session);
+          // Fail closed：以服务端校验为权威，任何校验失败都丢弃本地会话，
+          // 避免带着过期或伪造凭证进入管理端。
+          this.session = null;
+          persistSession(null);
         }
       }
 

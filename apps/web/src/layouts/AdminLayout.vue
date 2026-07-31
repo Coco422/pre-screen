@@ -31,6 +31,10 @@ const sessionStore = useAdminSessionStore();
 
 onMounted(async () => {
   await sessionStore.restore();
+  if (!sessionStore.isLoggedIn) {
+    // 会话校验失败（过期/伪造/后端拒绝）时 fail closed，回到登录页。
+    await router.replace("/login");
+  }
 });
 
 const currentTitle = computed(() => String(route.meta.title ?? "工作台"));

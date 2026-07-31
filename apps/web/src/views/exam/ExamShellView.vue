@@ -595,10 +595,17 @@ async function runActiveCode(question: ExamQuestion) {
       sourceCode: codeValue(question),
       stdin: runInput.value
     });
+    const timedOut =
+      result.status?.id === 5 ||
+      /time.?limit|exceeded|超时/i.test(result.status?.description ?? "");
     runFeedback.value = {
       questionId: question.id,
       state: "success",
-      summary: result.stderr || result.compile_output ? "试跑已返回，请先检查报错信息" : "试跑完成，可以根据输出继续调整代码",
+      summary: timedOut
+        ? "试跑超时（Time Limit Exceeded），请优化代码复杂度后重试"
+        : result.stderr || result.compile_output
+          ? "试跑已返回，请先检查报错信息"
+          : "试跑完成，可以根据输出继续调整代码",
       detail: formatRunResult(result) || "本次试跑没有返回额外输出。",
       updatedAt: formatClock(new Date())
     };
@@ -630,10 +637,17 @@ async function submitActiveCode(question: ExamQuestion) {
       language: questionLanguage(question),
       sourceCode: codeValue(question)
     });
+    const timedOutCases = result.results.some(
+      (item) =>
+        item.status?.id === 5 ||
+        /time.?limit|exceeded|超时/i.test(item.status?.description ?? "")
+    );
     submitFeedback.value = {
       questionId: question.id,
       state: "success",
-      summary: `通过 ${result.summary.passed_count} / ${result.summary.passed_count + result.summary.failed_count} 个用例`,
+      summary: timedOutCases
+        ? `通过 ${result.summary.passed_count} / ${result.summary.passed_count + result.summary.failed_count} 个用例 · 存在超时用例，建议优化后重新提交`
+        : `通过 ${result.summary.passed_count} / ${result.summary.passed_count + result.summary.failed_count} 个用例`,
       detail: `当前得分 ${result.summary.total_score} / ${result.summary.max_score}`,
       updatedAt: formatClock(new Date()),
       passedCount: result.summary.passed_count,

@@ -50,6 +50,15 @@
       </div>
     </header>
 
+    <div
+      v-if="profile.processing?.status === 'failed'"
+      class="detail-page__error"
+      role="alert"
+    >
+      <strong>最近操作失败</strong>
+      <span>{{ profile.processing.errorMessage || profile.processing.message || "请稍后重试" }}</span>
+    </div>
+
     <div class="detail-page__status">
       <AdminToneBadge :label="profile.status" :tone="statusTone" />
       <AdminToneBadge :label="`解析质量 ${profile.quality}`" :tone="signal.tone" />
@@ -625,6 +634,24 @@ watch(
   border-color: #f3c5c1;
   color: #d34f45;
   background: #fff8f7;
+}
+
+.detail-page__error {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.24);
+  color: #b91c1c;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.detail-page__error strong {
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
 }
 
 .detail-page__status {

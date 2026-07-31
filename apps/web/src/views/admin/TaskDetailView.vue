@@ -147,6 +147,9 @@
 
           <div class="upload-footer">
             <div class="upload-note">{{ upload.stage.detail }}</div>
+            <p v-if="upload.errorMessage" class="upload-error" role="alert">
+              失败原因：{{ upload.errorMessage }}
+            </p>
             <RouterLink
               v-if="upload.candidateId"
               class="outline-btn inline-btn"
@@ -324,7 +327,8 @@ const uploadEntries = computed(() =>
   (task.value?.uploads ?? []).map((upload) => ({
     ...upload,
     stage: describeUploadStage(upload),
-    steps: Object.values(upload.processing?.steps ?? {})
+    steps: Object.values(upload.processing?.steps ?? {}),
+    errorMessage: upload.processing?.errorMessage ?? ""
   }))
 );
 const candidateEntries = computed(() =>
@@ -971,6 +975,14 @@ onBeforeUnmount(() => {
 .upload-step-chip--succeeded {
   background: #eaf8f1;
   color: #23845d;
+}
+
+.upload-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  word-break: break-word;
 }
 
 .upload-step-chip--failed {

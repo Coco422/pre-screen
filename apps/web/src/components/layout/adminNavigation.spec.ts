@@ -10,18 +10,14 @@ describe("adminNavigation", () => {
       "候选人",
       "考卷管理",
       "结果中心",
-      "风险管理",
+      "考试监控",
       "系统设置"
     ]);
   });
 
-  it("marks the placeholder destinations that are not implemented in phase one", () => {
+  it("contains no placeholder destinations", () => {
     const placeholderItems = adminNavigation.filter((item) => item.placeholder);
 
-    expect(placeholderItems.map((item) => item.label)).toEqual([
-      "考卷管理",
-      "风险管理",
-      "系统设置"
-    ]);
+    expect(placeholderItems).toEqual([]);
   });
 });

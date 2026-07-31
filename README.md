@@ -23,7 +23,7 @@
 1. Copy `.env.example` to `.env` and fill credentials（AI key、Judge0 等）。
 2. Python：`uv sync --group dev`
 3. Web：`cd apps/web && pnpm install`（或沿用仓库锁文件工具）
-4. 迁移：`bash scripts/flyway-migrate.sh`（Postgres 表结构；dev-up 前先跑）
+4. （可选）手动迁移：`bash scripts/flyway-migrate.sh`；`dev-up.sh` 会在启动 gateway 前自动执行幂等迁移
 5. 起依赖与网关：`bash scripts/dev-up.sh`（默认 `STORE_BACKEND=postgres`）
 6. 上传的 PDF 进 MinIO，候选人/任务在 Postgres；**重启 gateway 后仍在**
 7. 若只要演示种子数据：`STORE_BACKEND=memory docker compose up -d gateway`

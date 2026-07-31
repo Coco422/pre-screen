@@ -5,13 +5,14 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
 # Prefer host-side apply when Docker cannot mount the repo volume (e.g. /Volumes paths).
-if [[ "${FLYWAY_FORCE_DOCKER:-0}" != "1" ]]; then
-  if command -v uv >/dev/null 2>&1; then
-    echo "applying SQL migrations via host psycopg (scripts/apply-sql-migrations.py)"
-    cd "$repo_root"
-    uv run python scripts/apply-sql-migrations.py
+# Host apply 失败时回退到 docker flyway，避免迁移被单一路径阻塞。
+if [[ "${FLYWAY_FORCE_DOCKER:-0}" != "1" ]] && command -v uv >/dev/null 2>&1; then
+  echo "applying SQL migrations via host psycopg (scripts/apply-sql-migrations.py)"
+  cd "$repo_root"
+  if uv run python scripts/apply-sql-migrations.py; then
     exit 0
   fi
+  echo "host migration failed, falling back to docker flyway" >&2
 fi
 
 docker_network_mode="${FLYWAY_DOCKER_NETWORK_MODE:-}"

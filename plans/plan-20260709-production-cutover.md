@@ -166,7 +166,15 @@ Web POST /api/admin/tasks/:id/uploads
 - [x] 4.1 前端 `ResultDetailView`：接 `PUT .../review` + `POST .../complete-screening`
 - [x] 4.2 前端监控页 `/admin/monitor`：轮询 `GET .../monitor/sessions` + force-submit
 - [x] 4.3 导航与权限：monitor 入口接真页；settings 已有
-- [ ] 4.4 错误态：解析失败、AI 不可用、Judge0 超时 — 页面可见、可重试
+- [x] 4.4 错误态：解析失败、AI 不可用、Judge0 超时 — 页面可见、可重试
+
+**Immediate P0 resume checkpoint (2026-07-19)**
+
+- [x] P0-WEB-1 恢复 `apps/web` 构建/测试基线：安装锁文件依赖并更新过期导航测试
+- [x] P0-WEB-2 删除 `requestJson` / admin session / 列表加载的静默 fallback，统一 fail closed
+- [x] P0-WEB-3 完成 4.4 三类失败态与真实重试闭环
+- [x] P0-WEB-4 通过前端定向验证、build、可用的 task sync/workflow checks 后再提交推送；检查入口缺失时明确报告
+- Recovery packet: `tasks/notes/2026-07-19-frontend-p0-handoff.md`
 
 **Exit**：HR 不打开后端日志也能完成「修分 → 通过/淘汰」与「查看在考会话」。
 

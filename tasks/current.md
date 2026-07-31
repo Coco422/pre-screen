@@ -1,7 +1,7 @@
 # Current Status Snapshot
 
 > **Status**: Active cutover — durable screening loop landed  
-> **Updated At**: 2026-07-09  
+> **Updated At**: 2026-07-31
 > **Active Plan**: `plans/plan-20260709-production-cutover.md`
 
 ## Already done
@@ -20,11 +20,12 @@
 | 2.9 Risk events + monitor list | Done |
 | 2.10 AI settings | Done |
 | Phase 4.1–4.3 FE product gaps | Done earlier |
+| Frontend P0: build/test 恢复 + fail closed + 4.4 错误态（2026-07-31 代码完成，待手动联调验收） | Done |
 
 ## Still open
 
 - Phase 3: remove `demo_store` / seed isolation  
-- Phase 4.4 error-state polish  
+- Frontend P0 手动验收（代码已完成，待真实流程联调；handoff: `tasks/notes/2026-07-19-frontend-p0-handoff.md`）
 - Phase 5 workers / observability / runbooks  
 - Deferred: notifications, avatar/password, WebSocket monitor  
 

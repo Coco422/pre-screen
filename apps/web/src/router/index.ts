@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 
 import AdminLayout from "../layouts/AdminLayout.vue";
-import { hasAdminSession } from "../stores/adminSession";
+import { useAdminSessionStore } from "../stores/adminSession";
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -165,16 +165,24 @@ export function createAppRouter() {
     routes
   });
 
-  appRouter.beforeEach((to) => {
-    const needsAdminSession = to.path.startsWith("/admin");
-    const loggedIn = hasAdminSession();
+  appRouter.beforeEach(async (to) => {
+    const sessionStore = useAdminSessionStore();
 
-    if (needsAdminSession && !loggedIn) {
-      return "/login";
+    if (to.path.startsWith("/admin")) {
+      // 先完成服务端会话校验（fail closed）：本地残留或过期 token 一律在此拦截，
+      // 避免内部页面先挂载、再被异步校验跳走。
+      await sessionStore.restore();
+      if (!sessionStore.isLoggedIn) {
+        return "/login";
+      }
+      return true;
     }
 
-    if (to.path === "/login" && loggedIn) {
-      return "/admin/dashboard";
+    if (to.path === "/login") {
+      await sessionStore.restore();
+      if (sessionStore.isLoggedIn) {
+        return "/admin/dashboard";
+      }
     }
 
     return true;

@@ -1,18 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  hasAdminSession: vi.fn()
+  restore: vi.fn(async () => {}),
+  session: { isLoggedIn: false }
 }));
 
 vi.mock("../stores/adminSession", () => ({
-  hasAdminSession: mocks.hasAdminSession
+  useAdminSessionStore: () => ({
+    restore: mocks.restore,
+    isLoggedIn: mocks.session.isLoggedIn
+  })
 }));
 
 import { createAppRouter, routes } from "./index";
 
 describe("router", () => {
   beforeEach(() => {
-    mocks.hasAdminSession.mockReset();
+    mocks.restore.mockReset();
+    mocks.restore.mockResolvedValue(undefined);
+    mocks.session.isLoggedIn = false;
   });
 
   it("redirects the root route to login", () => {
@@ -48,12 +54,21 @@ describe("router", () => {
     expect(routes.some((route) => route.path === "/exam/:token/submitted")).toBe(true);
   });
 
-  it("sends authenticated users from login to the new dashboard path", () => {
+  it("redirects unauthenticated users from admin pages to login", async () => {
     const router = createAppRouter();
-    mocks.hasAdminSession.mockReturnValue(true);
 
-    return router.push("/login").then(() => {
-      expect(router.currentRoute.value.fullPath).toBe("/admin/dashboard");
-    });
+    await router.push("/admin/dashboard");
+
+    expect(mocks.restore).toHaveBeenCalled();
+    expect(router.currentRoute.value.fullPath).toBe("/login");
+  });
+
+  it("sends authenticated users from login to the new dashboard path", async () => {
+    const router = createAppRouter();
+    mocks.session.isLoggedIn = true;
+
+    await router.push("/login");
+
+    expect(router.currentRoute.value.fullPath).toBe("/admin/dashboard");
   });
 });
